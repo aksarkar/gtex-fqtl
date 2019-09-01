@@ -1,0 +1,1422 @@
+#+TITLE: fQTL analysis
+#+SETUPFILE: setup.org
+
+* Introduction
+
+  We previously fit ~fqtl~ models for 39,998 genes across 44 tissues from GTEx
+  (version 6p). Here, we analyze the fitted ~fqtl~ models.
+
+* Setup
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    (org-babel-lob-ingest "/home/aksarkar/.emacs.d/org-templates/library.org")
+    (add-to-list 'python-shell-completion-native-disabled-interpreters "jupyter")
+  #+END_SRC
+
+  #+RESULTS:
+  | jupyter | pypy |
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    ;; This is needed to unjam when async tasks fail
+    (ob-ipython--dequeue 'ob-ipython--async-queue)
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+CALL: ipython3(memory="16G",venv="fqtl",partition="broadwl") :dir /scratch/midway2/aksarkar/fqtl :exports none
+
+  #+RESULTS:
+  : Submitted batch job 58375380
+
+  #+NAME: imports
+  #+BEGIN_SRC ipython
+    import itertools as it
+    import numpy as np
+    import pandas as pd
+    import pickle
+    import pyplink
+    import scipy.linalg as sl
+    import scipy.special as sp
+    import scipy.stats as st
+    import tabix
+  #+END_SRC
+
+  #+RESULTS: imports
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+  #+NAME: r-imports
+  #+BEGIN_SRC ipython
+    import rpy2.robjects.packages
+    import rpy2.robjects.numpy2ri
+    import rpy2.robjects.pandas2ri
+
+    rpy2.robjects.numpy2ri.activate()
+    rpy2.robjects.pandas2ri.activate()
+    flashr = rpy2.robjects.packages.importr('flashr')
+  #+END_SRC
+
+  #+RESULTS: r-imports
+  :RESULTS:
+  # Out[2]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    %matplotlib inline
+    %config InlineBackend.figure/analysis.org_formats = set(['retina'])
+    import colorcet
+    import matplotlib
+    import matplotlib.pyplot as plt
+    import sklearn.cluster
+    import sklearn.decomposition as skd
+    import textwrap
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[3]:
+  :END:
+
+* Application to GTEx
+  :PROPERTIES:
+  :CUSTOM_ID: gtex
+  :END:
+** Read the data
+
+   Extract the GTEx univariate summary statistics.
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/
+     sbatch --partition=mstephens
+     #!/bin/bash
+     cp /project/compbio/GTEx_dbGaP/GTEx_Analysis_2017-06-05_v8/eqtl-release-201709/GTEx_Analysis_v8_eQTL.tar /scratch/midway2/aksarkar/fqtl
+     tar xf GTEx_Analysis_v8_eQTL.tar
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 57495270
+
+   Read the sample sizes and number of genes analyzed from the QC'ed expression
+   matrices.
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl
+     cp /project/compbio/GTEx_dbGaP/GTEx_Analysis_2017-06-05_v8/eqtl-release-201709/GTEx_Analysis_v8_eQTL_expression_matrices.tar /scratch/midway2/aksarkar/fqtl
+     tar xf /scratch/midway2/aksarkar/fqtl/GTEx_Analysis_v8_eQTL_expression_matrices.tar
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/GTEx_Analysis_v8_eQTL_expression_matrices
+     sbatch --partition=mstephens
+     #!/bin/bash
+     function z () { zcat $1 | awk -vf=$(basename $1 .v8.normalized_expression.bed.gz) 'NR == 1 {n = NF - 4} END {print f, n, NR - 1; exit}'; }
+     export -f z
+     parallel -j1 z ::: *.bed.gz | awk 'BEGIN {print "tissue", "num_samples", "num_genes"} {print}' >sample-sizes.txt
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 57495778
+
+   #+BEGIN_SRC ipython
+     sample_sizes = pd.read_csv('/scratch/midway2/aksarkar/fqtl/GTEx_Analysis_v8_eQTL_expression_matrices/sample-sizes.txt', sep=' ')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[59]:
+   :END:
+
+   Read the GTEx tissue colors.
+
+   #+BEGIN_SRC ipython
+     colors = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/gtex_colors.txt', sep='\t')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[67]:
+   :END:
+
+   Read the ~fqtl~ results.
+
+   #+NAME: read-fqtl-res
+   #+BEGIN_SRC ipython
+     fqtl_snp = pd.concat([pd.read_csv(f'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/docs/share/fqtl/chr{i}.snp.bed.gz', sep='\t')
+                           for i in range(1, 23)])
+     fqtl_tis = pd.concat([pd.read_csv(f'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/docs/share/fqtl/chr{i}.tis.bed.gz', sep='\t')
+                           for i in range(1, 23)])
+   #+END_SRC
+
+   #+RESULTS: read-fqtl-res
+   :RESULTS:
+   # Out[4]:
+   :END:
+
+   Keep only regulatory mechanisms (SNP/tissue factor pairs) with high
+   posterior probability.
+
+   #+BEGIN_SRC ipython :async t
+     keep_gene_factors = (fqtl_snp[sp.expit(fqtl_snp['lodds']) > 0.95]
+                          .merge(fqtl_tis[sp.expit(fqtl_tis['lodds']) > 0.95], on=['ensg', 'factor', 'ld'])
+                          [['ensg', 'factor', 'ld']]
+                          .groupby(['ensg', 'factor', 'ld']).first().reset_index())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[52]:
+   :END:
+
+   Write out the list of kept regulatory mechanisms.
+
+   #+BEGIN_SRC ipython
+     keep_gene_factors.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/keep-gene-factors.txt', sep='\t')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[55]:
+   :END:
+
+   Read the list of regulatory mechanisms to keep.
+
+   #+NAME: read-fqtl-keep
+   #+BEGIN_SRC ipython
+     keep_gene_factors = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/keep-gene-factors.txt', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+RESULTS: read-fqtl-keep
+   :RESULTS:
+   # Out[5]:
+   :END:
+
+** Relationship of sample size to number of eGenes
+   :PROPERTIES:
+   :CUSTOM_ID: egenes
+   :END:
+
+   Read the number of eGenes discovered in univariate analyses.
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/GTEx_Analysis_v8_eQTL
+     sbatch --partition=mstephens
+     #!/bin/bash
+     function z () { zcat $1 | awk -vf=$(basename $1 .v8.egenes.txt.gz) '$(NF - 2) < 0.05 {n += 1} END {print f, n; exit}'; }
+     export -f z
+     parallel -j1 z ::: *.egenes.txt.gz | awk 'BEGIN {print "tissue", "num_egenes"} {print}' >univariate-egenes.txt
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 57590228
+
+   #+BEGIN_SRC ipython
+     univariate_egenes = pd.read_csv('/scratch/midway2/aksarkar/fqtl/GTEx_Analysis_v8_eQTL/univariate-egenes.txt', sep=' ')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[56]:
+   :END:
+
+   Read the eGenes discovered by ~fQTL~.
+
+   #+BEGIN_SRC ipython :async t
+     fqtl_egenes = (fqtl_tis
+                    .merge(keep_gene_factors)
+                    .groupby('tis')
+                    ['ensg']
+                    .agg(len)
+                    .reset_index()
+                    .rename(columns={'ensg': 'num_egenes'})
+     )
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[57]:
+   :END:
+
+   Plot the relationship between eGenes and sample size.
+
+   #+BEGIN_SRC ipython
+     J = sample_sizes.merge(fqtl_egenes, left_on='tissue', right_on='tis').merge(univariate_egenes, on='tissue', suffixes=['_fqtl', '_snp']).merge(colors, left_on='tissue', right_on='tissue_id').sort_values('num_samples')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[62]:
+   :END:
+
+   # TODO: https://matplotlib.org/gallery/text_labels_and_annotations/custom_legends.html
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/egenes-vs-sample-size.png
+     plt.clf()
+     plt.gcf().set_size_inches(6, 4)
+     for _, row in J.iterrows():
+       base = row['num_egenes_snp']
+       top = row['num_egenes_fqtl']
+       plt.scatter(row['num_samples'], base, c=f'#{row["tissue_color_hex"]}', s=8, marker='.')
+       plt.scatter(row['num_samples'], top, c=f'#{row["tissue_color_hex"]}', s=8, marker='^')
+       plt.arrow(row['num_samples'], base, 0, top - base, lw=1, color=f'#{row["tissue_color_hex"]}')
+     plt.xlabel('Sample size')
+     plt.ylabel('Number of discovered eGenes')
+     plt.ylim(0, 35007)
+     plt.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[65]:
+   [[file:figure/analysis.org/egenes-vs-sample-size.png]]
+   :END:
+
+   Estimate the correlation between number of eGenes and sample size.
+
+   #+BEGIN_SRC ipython
+     st.pearsonr(J['num_egenes_snp'], J['num_samples'])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[73]:
+   : (0.8261525353495132, 4.855677357713278e-13)
+   :END:
+
+   Describe how many more eGenes ~fqtl~ discovers.
+
+   #+BEGIN_SRC ipython
+     (J['num_egenes_fqtl'] / J['num_egenes_snp']).describe()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[74]:
+   #+BEGIN_EXAMPLE
+     count    48.000000
+     mean      2.263618
+     std       0.308351
+     min       1.636869
+     25%       2.090294
+     50%       2.175653
+     75%       2.400919
+     max       3.099417
+     dtype: float64
+   #+END_EXAMPLE
+   :END:
+
+** Patterns of tissue sharing
+   :PROPERTIES:
+   :CUSTOM_ID: sharing
+   :END:
+
+   Plot the number of tissues of action per regulatory mechanism.
+
+   #+BEGIN_SRC ipython :async t
+     num_tissues_per_mech = (fqtl_tis
+                             .merge(keep_gene_factors)
+                             .groupby(['ensg', 'factor', 'ld'])
+                             ['tis']
+                             .agg(lambda x: len(set(x)))
+                             .reset_index())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[75]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/num-tissues-per-mechanism.png
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(num_tissues_per_mech['tis'], color='k', bins=49, density=True)
+     plt.xlabel('Number of tissues of action')
+     plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[76]:
+   : Text(0, 0.5, 'Density')
+   [[file:figure/analysis.org/num-tissues-per-mechanism.png]]
+   :END:
+
+   Find the percentiles of the number of tissues of action.
+
+   #+BEGIN_SRC ipython
+     np.percentile(num_tissues_per_mech['tis'], [50, 75, 90, 95, 99])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[77]:
+   : array([ 1.,  2.,  3.,  7., 33.])
+   :END:
+
+   Plot the number of mechanisms per gene.
+
+   #+BEGIN_SRC ipython
+     num_mechanisms = (fqtl_snp
+                       .merge(keep_gene_factors)
+                       .groupby(['ensg', 'ld'])
+                       ['factor']
+                       .agg(lambda x: len(set(x)))
+                       .reset_index())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[10]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/num-mechanisms.png
+     M = num_mechanisms['factor'].max()
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(num_mechanisms['factor'], color='k', bins=M, density=True)
+     plt.xlabel('Number of regulatory mechanisms')
+     _ = plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[96]:
+   [[file:figure/analysis.org/num-mechanisms.png]]
+   :END:
+
+   Plot the number of tissues of action per gene.
+
+   #+BEGIN_SRC ipython :async t
+     num_tissues_per_gene = (fqtl_tis
+                             .merge(keep_gene_factors)
+                             .groupby(['ensg', 'ld'])
+                             ['tis']
+                             .agg(lambda x: len(set(x)))
+                             .reset_index())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[6]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/num-tissues-per-gene.png
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(num_tissues_per_gene['tis'], color='k', bins=49, density=True)
+     plt.xlabel('Number of tissues of action')
+     _ = plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[98]:
+   [[file:figure/analysis.org/num-tissues-per-gene.png]]
+   :END:
+
+   Count the singletons.
+
+   #+BEGIN_SRC ipython
+     num_mechs = (fqtl_tis
+                  .merge(keep_gene_factors)
+                  .groupby(['ensg', 'factor', 'ld'])
+                  ['tis']
+                  .first()
+                  .shape[0])
+     num_tissues_per_gene['tis'].value_counts()[1] / sample_sizes['num_genes'].max(), num_tissues_per_mech['tis'].value_counts()[1] / num_mechs
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[100]:
+   : (0.20958665409775187, 0.7227125463350673)
+   :END:
+
+   Find genes which are shared across all tissues, but are split into multiple
+   mechanisms.
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/twas/
+     zcat gencode.v29.basic.annotation.gtf.gz | awk -vFS='\t' '$3 == "gene" && $9 ~ /gene_type "protein_coding"/ {split($9, a, " "); split(a[2], b, "."); print(b[1])}' | tr -d \" | gzip >protein-coding.txt.gz
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC ipython
+     pc_genes = pd.read_csv('/scratch/midway2/aksarkar/fqtl/twas/protein-coding.txt.gz', header=None, index_col=None)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[22]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     query = (num_tissues_per_gene[num_tissues_per_gene["tis"] == 49]
+              .merge(num_mechanisms, on=['ensg', 'ld'])
+              .merge(pc_genes, left_on='ensg', right_on=0)
+              .sort_values('factor', ascending=False)
+              [['ensg', 'ld', 'tis', 'factor']])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[30]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     query.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-shared-genes.txt.gz', sep='\t', index=None)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[34]:
+   :END:
+
+** LD between causal variants
+   :PROPERTIES:
+   :CUSTOM_ID: causal-ld
+   :END:
+
+   Estimate the distribution of LD between putative causal variants within the
+   same SNP factor vs. across SNP factors for each gene
+
+   Slice the GTEx genotypes according to the LD blocks defined by LDetect
+   ([[http://www.ncbi.nlm.nih.gov/pubmed/26395773][Berisa and Pickrell 2016]]).
+
+   #+NAME: slice
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/genotypes/
+     N=$(wc -l </project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/ld_hg38.bed)
+     sbatch --partition=broadwl -a 1501-${N}%100 --mem=1G --time=10:00 --job-name=plink
+     #!/bin/bash
+     function slice {
+         # Important: fqtl extends LD blocks by 1MB
+         tabix -h /project/compbio/GTEx_dbGaP/GTEx_Analysis_2017-06-05_v8/genotypes/WGS/variant_calls/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.vcf.gz $1:$(($2-1000000))-$(($3+1000000)) | gzip >block_$4.vcf.gz
+         plink --memory 1000 --vcf block_$4.vcf.gz --make-bed --maf 0.01 --out block_$4
+     }
+     module load htslib  # tabix
+     module load plink
+     readarray -O1 blocks </project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/ld_hg38.bed
+     slice ${blocks[$SLURM_ARRAY_TASK_ID]}
+   #+END_SRC
+
+   #+RESULTS: slice
+   : Submitted batch job 58207878
+
+   Extract one SNP factor for testing purposes.
+
+   #+BEGIN_SRC ipython
+     chunk = next(iter(fqtl_snp.merge(keep_gene_factors).groupby(['ensg', 'ld'])))
+     fixed_key = (chunk[0][0], 1646)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[10]:
+   :END:
+
+   #+NAME: analyze-ld-impl
+   #+BEGIN_SRC ipython
+     def read_ld_block(key):
+       f = pyplink.PyPlink(f'/scratch/midway2/aksarkar/fqtl/genotypes/block_{key}')
+       cols = []
+       x = []
+       for marker, row in f.iter_geno():
+         cols.append(marker)
+         x.append(row)
+       x = np.ma.masked_equal(np.array(x), -1).T
+       x = x.filled(x.mean(axis=0)).astype(float)
+       x -= x.mean(axis=0)
+       x /= x.std(axis=0)
+       x = pd.DataFrame(x, columns=cols)
+       return x
+
+     def estimate_ld(x, pve=0.99):
+       u, d, v = sl.svd(x, full_matrices=False)
+       lam = np.square(d)
+       drop = np.cumsum(lam / lam.sum()) > pve
+       d[drop] = 0
+       ld = v.T.dot(np.diag(lam)).dot(v) / x.shape[0]
+       ld = pd.DataFrame(ld, index=x.columns, columns=x.columns)
+       return ld
+
+     def ld_distribution(key, chunk):
+       # Important: fqtl LD blocks are zero-based
+       x = read_ld_block(key[1])
+       ld = estimate_ld(x)
+       within = []
+       between = []
+       for (_, row1), (_, row2) in it.combinations(chunk.iterrows(), 2):
+         r = ld.loc[f'{row1["#chr"]}_{row1["stop"]}_{row1["a1"]}_{row1["a2"]}_b38',
+                    f'{row2["#chr"]}_{row2["stop"]}_{row2["a1"]}_{row2["a2"]}_b38']
+         r2 = r * r
+         if f'{row1["#chr"]}_{row1["stop"]}_{row1["a1"]}_{row1["a2"]}_b38' == f'{row2["#chr"]}_{row2["stop"]}_{row2["a1"]}_{row2["a2"]}_b38':
+           assert np.isclose(r2, 1)
+         if row1["factor"] == row2["factor"]:
+           within.append(r2)
+         else:
+           between.append(r2)
+       if within:
+         within_mean = np.array(within).mean()
+       else:
+         within_mean = 1
+       if between:
+         between_mean = np.array(between).mean()
+       else:
+         between_mean = 0
+       return within_mean, len(within), between_mean, len(between)
+   #+END_SRC
+
+   #+RESULTS: analyze-ld-impl
+   :RESULTS:
+   # Out[15]:
+   :END:
+
+   Shard the SNP factors to parallelize the analysis.
+
+   #+NAME: shard-ld.py
+   #+BEGIN_SRC ipython :eval never :noweb tangle :tangle /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/shard-ld.py
+     <<imports>>
+     <<read-fqtl-res>>
+     <<read-fqtl-keep>>
+     fqtl_snp = fqtl_snp.merge(keep_gene_factors)
+     G = fqtl_snp.groupby(['ensg', 'ld'])
+     N = len(G.groups)
+     M = 100
+     shard = []
+     index = 0
+     for i, (k, g) in enumerate(G):
+       shard.append(g)
+       if i // (N // M) > index:
+         shard = pd.concat(shard)
+         shard.columns = g.columns
+         shard.to_csv(f'/scratch/midway2/aksarkar/fqtl/analyze-ld/chunk-{index}.txt.gz', sep='\t', index=False, compression='gzip')
+         shard = []
+         index += 1
+   #+END_SRC
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/analyze-ld
+     sbatch --partition=broadwl --mem=4G -n1 -c28 --exclusive --job-name=shard
+     #!/bin/bash
+     source activate fqtl
+     module load htslib
+     module load plink
+     python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/shard-ld.py
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 57705157
+
+   Run the analysis.
+
+   #+NAME: analyze-ld.py
+   #+BEGIN_SRC ipython :eval never :noweb tangle :tangle /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/analyze-ld.py
+     <<imports>>
+     import os
+     <<analyze-ld-impl>>
+     blocks = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/ld_hg38.bed', sep='\t', header=None)
+     chunk = pd.read_csv(f'/scratch/midway2/aksarkar/fqtl/analyze-ld/chunk-{os.environ["SLURM_ARRAY_TASK_ID"]}.txt.gz', sep='\t')
+     result = {}
+     for k, g in chunk.groupby(['ensg', 'ld']):
+       result[k] = ld_distribution(k, g)
+     result = pd.DataFrame.from_dict(result, columns=['within', 'within_n', 'between', 'between_n'], orient='index')
+     result.index = pd.MultiIndex.from_tuples(result.index, names=['ensg', 'ld'])
+     (result
+      .reset_index()
+      .to_csv(f'/scratch/midway2/aksarkar/fqtl/analyze-ld/result-{os.environ["SLURM_ARRAY_TASK_ID"]}.txt.gz', sep='\t', compression='gzip', index=None))
+   #+END_SRC
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/analyze-ld
+     sbatch --partition=broadwl -a 2,35,52,53,72 --mem=16G -n1 -c28 --exclusive --time=90:00 --job-name=analyze_ld
+     #!/bin/bash
+     source activate fqtl
+     module load htslib
+     module load plink
+     python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/analyze-ld.py
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 58221831
+
+   Write the result out.
+
+   #+BEGIN_SRC ipython
+     ld_distribution = pd.concat([pd.read_csv(f'/scratch/midway2/aksarkar/fqtl/analyze-ld/result-{i}.txt.gz', sep='\t', index_col=0) for i in range(100)])
+     ld_distribution.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/ld-distribution.txt.gz', compression='gzip', sep='\t')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[4]:
+   :END:
+
+   Read the distribution of average LD within and between SNP factors.
+
+   #+BEGIN_SRC ipython
+     ld_distribution = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/ld-distribution.txt.gz', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[8]:
+   :END:
+
+   Count the total number of genes.
+
+   #+BEGIN_SRC ipython
+     len(set(ld_distribution.index))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[15]:
+   : 31473
+   :END:
+
+   Count how many genes have high between mechanism LD.
+
+   #+BEGIN_SRC ipython
+     ld_distribution[np.logical_and(ld_distribution['between'] > 0.1, ld_distribution['between_n'] > 0)].groupby('ensg').first().shape[0]
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[8]:
+   : 4694
+   :END:
+
+   Count how many genes have high (low) within mechanism LD.
+
+   #+BEGIN_SRC ipython
+     (ld_distribution[ld_distribution['within'] > 0.95].groupby('ensg').first().shape[0], 
+      ld_distribution[ld_distribution['within'] < 0.1].groupby('ensg').first().shape[0])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[11]:
+   : (7902, 24622)
+   :END:
+
+   For each gene/LD block, plot the average LD \(r^2\) within mechanisms versus
+   between mechanisms.
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/ld-between-within-factors.png
+     plt.clf()
+     fig, ax = plt.subplots(2, 2, gridspec_kw={'width_ratios': [5, 1], 'height_ratios': [1, 5]})
+     fig.set_size_inches(4, 4)
+
+     ax[0][0].hist(ld_distribution['within'], bins=30, density=True, color='k')
+     ax[0][0].set_xticks([])
+     ax[0][0].set_yticks([])
+
+     ax[0][1].set_axis_off()
+
+     ax[1][0].scatter(ld_distribution['within'], ld_distribution['between'], s=1, alpha=0.25, c='k')
+     ax[1][0].set_xlabel('LD $r^2$ within mechanism')
+     ax[1][0].set_ylabel('LD $r^2$ between mechanisms')
+
+     ax[1][1].hist(ld_distribution['between'], orientation='horizontal', color='k', bins=30, density=True)
+     ax[1][1].set_xticks([])
+     ax[1][1].set_yticks([])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[12]:
+   : []
+   [[file:figure/analysis.org/ld-between-within-factors.png]]
+   :END:
+
+   Plot the number of mechanisms for genes with evidence of independent
+   mechansims.
+
+   #+BEGIN_SRC ipython
+     num_independent_mechs = (fqtl_tis
+                              .merge(keep_gene_factors, on=['ensg', 'factor', 'ld'])
+                              .merge(ld_distribution[np.logical_and(ld_distribution['within'] > 0.95, ld_distribution['between'] < 0.1)].reset_index(),
+                                     on=['ensg', 'ld'])
+                              .groupby(['ensg', 'ld'])
+                              [['factor']]
+                              .agg(lambda x: len(set(x)))
+                              .reset_index())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[25]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/num-independent-mechs.png
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(num_independent_mechs['factor'], color='k', bins=num_independent_mechs['factor'].max(), density=True)
+     plt.xlabel('Number of mechanisms')
+     plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[26]:
+   : Text(0, 0.5, 'Density')
+   [[file:figure/analysis.org/num-independent-mechs.png]]
+   :END:
+
+   Count how many genes had more than one independent mechanism.
+
+   #+BEGIN_SRC ipython
+     len(num_independent_mechs[num_independent_mechs['factor'] > 1].groupby('ensg')), len(num_independent_mechs[num_independent_mechs['factor'] > 1].groupby('ensg')) / len(set(num_independent_mechs['ensg']))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[27]:
+   : (3695, 0.5102886341665516)
+   :END:
+
+* Tissue-specific TWAS
+  :PROPERTIES:
+  :CUSTOM_ID: twas
+  :END:
+** Read the TWAS summary statistics
+
+   For each trait, assign each gene/mechanism to the best LD block.
+
+   #+BEGIN_SRC ipython :eval never :noweb tangle :tangle /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/assign-twas.py
+     <<imports>>
+     import os
+     i = os.environ['SLURM_ARRAY_TASK_ID']
+     (pd.read_csv(f'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/docs/share/twas/chr{i}.twas.bed.gz', sep='\t')
+      .groupby(['trait', 'ensg', 'factor'])
+      .apply(lambda x: x.loc[np.abs(x['z']).idxmax])
+      .reset_index(drop=True)
+      .to_csv(f'/scratch/midway2/aksarkar/fqtl/twas/chr{i}-twas.txt.gz', compression='gzip', sep='\t', index=None))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[7]:
+   :END:
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/twas/
+     sbatch --partition=broadwl --mem=8G --time=40:00 --job-name=assign-twas -a 1
+     #!/bin/bash
+     source activate fqtl
+     module load htslib
+     module load plink
+     python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/assign-twas.py
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 58196600
+
+   Extract the significant hits.
+
+   #+BEGIN_SRC ipython :eval never :noweb tangle :tangle /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas.py
+     <<imports>>
+     def bh(chunk, key, alpha=0.05):
+       N = chunk.shape[0]
+       temp = chunk.sort_values(key)
+       keep = temp[key] < alpha * np.arange(1, N + 1) / N
+       return temp[keep]
+     twas_sig = (pd.concat([pd.read_csv(f'/scratch/midway2/aksarkar/fqtl/twas/chr{i}-twas.txt.gz', sep='\t') for i in range(1, 23)])
+                 .groupby(['trait'])
+                 .apply(bh, key='p.val')
+                 .reset_index(drop=True))
+     twas_sig.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz', compression='gzip', sep='\t')
+   #+END_SRC
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/twas/
+     sbatch --partition=broadwl --mem=32G --time=10:00 --job-name=extract-twas
+     #!/bin/bash
+     source activate fqtl
+     module load htslib
+     module load plink
+     python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas.py
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 58197867
+
+   Read the significant hits.
+
+   #+NAME: read-twas-sig
+   #+BEGIN_SRC ipython
+     twas_sig = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+RESULTS: read-twas-sig
+   :RESULTS:
+   # Out[7]:
+   :END:
+
+** Plotting code
+
+   Reorder matrix columns to get similar columns next to each other.
+
+   #+BEGIN_SRC ipython
+     def newick(children, root, N):
+       if root < N:
+         return [root]
+       else:
+         left, right = children[root - N]
+         res = newick(children, left, N)
+         res.extend(newick(children, right, N))
+         return res
+
+     def order(L):
+       N = L.shape[0]
+       m0 = sklearn.cluster.AgglomerativeClustering(compute_full_tree=True).fit(L)
+       return newick(m0.children_, 2 * (N - 1), N)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[11]:
+   :END:
+
+** Descriptive statistics
+   :PROPERTIES:
+   :CUSTOM_ID: twas-descriptive
+   :END:
+
+   Count the total number of trait-gene associations.
+
+   #+BEGIN_SRC ipython
+     twas_sig.groupby(['trait', 'ensg']).first().shape[0]
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[30]:
+   : 31551
+   :END:
+
+   Plot the distribution of associations per trait.
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/twas-per-trait.png
+     genes_per_trait = twas_sig.groupby('trait')['ensg'].agg(lambda x: len(set(x))).reset_index()
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(genes_per_trait['ensg'], bins=20, color='k', density=True)
+     plt.xlabel('Number of associated genes')
+     plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[32]:
+   : Text(0, 0.5, 'Density')
+   [[file:figure/analysis.org/twas-per-trait.png]]
+   :END:
+
+   Count the number of gene associations with more than one mechanism.
+
+   #+BEGIN_SRC ipython
+     twas_sig.groupby(['trait', 'ensg'])['factor'].apply(lambda x: len(set(x)) > 1).sum()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[33]:
+   : 10931
+   :END:
+
+   Plot the distribution of number of gene-factor associations across traits.
+
+   #+BEGIN_SRC ipython
+     gene_factor_assoc = twas_sig.groupby(['trait', 'ensg'])['factor'].agg(len).reset_index()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[10]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/gene-factor-dist.png
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(gene_factor_assoc['factor'], bins=gene_factor_assoc['factor'].max() - 1, color='k', density=True)
+     plt.xlabel('Number of associated mechanisms')
+     plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[11]:
+   : Text(0, 0.5, 'Density')
+   [[file:figure/analysis.org/gene-factor-dist.png]]
+   :END:
+
+   Plot the distribution of average between mechanism LD for genes where
+   multiple factors were associated.
+
+   #+BEGIN_SRC ipython :async t
+     between_ld = (gene_factor_assoc
+                   .reset_index()
+                   .apply(lambda x: ld_distribution.loc[x['ensg'], 'between'].max() if x['ensg'] in ld_distribution.index and x['factor'] > 1 else 0, axis=1))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[46]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/ind-mechs-per-gene.png
+     plt.clf()
+     plt.gcf().set_size_inches(3, 3)
+     plt.hist(between_ld, bins=10, color='k', density=True)
+     plt.xlabel('Between mechanism LD $r^2$')
+     plt.ylabel('Density')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[47]:
+   : Text(0, 0.5, 'Density')
+   [[file:figure/analysis.org/ind-mechs-per-gene.png]]
+   :END:
+   
+   Count the proportion of genes with independent mechanisms (\(r^2 < 0.1\)).
+
+   #+BEGIN_SRC ipython
+     (between_ld < 0.1).sum() / between_ld.shape[0]
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[49]:
+   : 0.8699388577385816
+   :END:
+
+** Comparison to whole blood TWAS
+   :PROPERTIES:
+   :CUSTOM_ID: whole-blood-twas
+   :END:
+
+   Count the number of TWAS associations driven by mechanisms with high
+   posterior probability on whole blood.
+
+   #+BEGIN_SRC ipython
+     blood_twas_sig = (fqtl_tis
+      .merge(keep_gene_factors)
+      .query('tis == "Whole_Blood"')
+      .query('lodds > 2.94')
+      [['ensg', 'factor', 'ld']]
+      .merge(twas_sig, left_on=['ensg', 'factor', 'ld'], right_on=['ensg', 'factor', 'ld.idx']))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[59]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     blood_twas_sig.shape[0]
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[60]:
+   : 12321
+   :END:
+
+   Look at the traits with blood TWAS genes.
+
+   #+BEGIN_SRC ipython
+     len(set(blood_twas_sig['trait']))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[63]:
+   : 113
+   :END:
+
+** GOM of TWAS
+
+   #+BEGIN_SRC ipython
+     B = (~np.isnan(twas_sig.pivot_table(index='trait', columns='ensg', values='z'))).astype(int)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[8]:
+   :END:
+
+   #+BEGIN_SRC ipython :async t
+     obj = np.inf
+     opt = None
+     for trial in range(10):
+       m = skd.NMF(n_components=15, beta_loss=1, solver='mu', init='random', l1_ratio=1, alpha=1).fit(B)
+       if m.reconstruction_err_ < obj:
+         opt = m
+         obj = m.reconstruction_err_
+     L = opt.transform(B)
+     F = opt.components_
+     L *= F.sum(axis=1)
+     L /= L.sum(axis=1, keepdims=True)
+     F /= F.sum(axis=1, keepdims=True)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[214]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/nmf.png
+     plt.clf()
+     plt.gcf().set_size_inches(7, 5)
+     W = L.T[:,order(L)]
+     plt.imshow(W[np.argsort(W.argmax(axis=1))], cmap=colorcet.cm['blues'], vmin=0, vmax=1)
+     plt.xlabel('Traits')
+     plt.xticks([])
+     plt.ylabel('Modules')
+     plt.yticks([])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[215]:
+   : ([], <a list of 0 Text yticklabel objects>)
+   [[file:figure/analysis.org/nmf.png]]
+   :END:
+
+   Report the trait modules.
+
+   #+BEGIN_SRC ipython
+     (pd.concat({i: pd.DataFrame.from_dict({'trait': B.index[L[:,i] > .5], 'loading': L[:,i][L[:,i] > .5]}) for i in range(L.shape[1])})
+      .to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/nmf.txt.gz', sep='\t'))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[31]:
+   :END:
+
+   Report the gene modules.
+
+   #+BEGIN_SRC ipython
+     def top_genes(topics, num_genes=100):
+       res = {}
+       for k, t in topics.iteritems():
+         # Dey et al. Eq. 3-4 https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1006599
+         kl = t.values.reshape(-1, 1) * np.log((t.values.reshape(-1, 1) + 1e-8) / (topics.values + 1e-8)) + topics.values - t.values.reshape(-1, 1)
+         kl = np.delete(kl, k, axis=1)
+         res[k] = pd.DataFrame(kl, index=B.columns).min(axis=1).sort_values(ascending=False).head(n=num_genes)
+       return pd.concat(res).reset_index()
+   #+END_SRC
+
+   #+BEGIN_SRC ipython
+     res = top_genes(pd.DataFrame(F.T, index=B.columns), num_genes=100)
+     res.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz', compression='gzip', sep='\t', index=None)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[179]:
+   :END:
+
+   Compute pathway enrichments for the gene modules using PANTHER.
+
+   #+BEGIN_SRC bash
+     function z {
+         zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz | \
+             awk -vm=$1 '$1 == m {print $2}' | \
+             curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F organism="Homo sapiens" -F geneList=@- -F enrichmentType=fullGO_process -F type=enrichment -F correction=FDR >/scratch/midway2/aksarkar/fqtl/twas/panther-topic-$1.txt
+     }
+     export -f z
+     parallel -j5 z ::: $(seq 0 14)
+   #+END_SRC
+
+   #+RESULTS:
+
+   Read the pathway enrichments.
+
+   #+BEGIN_SRC ipython
+     panther_results = (pd.concat([pd.read_csv(f'/scratch/midway2/aksarkar/fqtl/twas/panther-topic-{i}.txt', sep='\t', index_col=None)
+                                  for i in range(topics.shape[1])], keys=range(topics.shape[1]))
+                        .reset_index(level=0))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[174]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     panther_results.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways.txt.gz', sep='\t', index=None)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[175]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     (panther_results[panther_results['FDR'] < 0.05]
+      .groupby('level_0')
+      .apply(lambda x: pd.Series(list(set(x['Name']))))
+      .reset_index(level=1, drop=True)
+      .to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways-fdr-05.txt.gz', sep='\t', header=True))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[165]:
+   :END:
+
+** Sparse factor analysis of TWAS
+   :PROPERTIES:
+   :CUSTOM_ID: factor-analysis
+   :END:
+
+   Construct the matrix of TWAS association \(z\)-scores for genes with at
+   least one significant hit. Take the best \(z\)-score across mechanisms and
+   LD blocks.
+
+   #+BEGIN_SRC ipython :eval never :noweb tangle :tangle /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas-z.py
+     <<imports>>
+     <<read-twas-sig>>
+     twas = pd.concat([pd.read_csv(f'/scratch/midway2/aksarkar/fqtl/twas/chr{i}-twas.txt.gz', sep='\t') for i in range(1, 23)])
+     Z = (twas[twas['ensg'].isin(set(twas_sig['ensg']))]
+          .groupby(['ensg', 'trait'])
+          .apply(lambda x: x.loc[np.abs(x['z']).idxmax])['z']
+          .reset_index()
+          .pivot_table(index='ensg', columns='trait', values='z'))
+     Z.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz', compression='gzip', sep='\t')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[7]:
+   :END:
+
+   #+BEGIN_SRC sh :dir /scratch/midway2/aksarkar/fqtl/twas/
+     sbatch --partition=broadwl --mem=16G --job-name=extract-twas-z
+     #!/bin/bash
+     source activate fqtl
+     python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas-z.py
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 58222818
+
+   Fit ~flash~.
+
+   #+BEGIN_SRC ipython :eval never :noweb tangle :tangle /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/apply-flash.py
+     <<imports>>
+     <<r-imports>>
+     Z = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz', sep='\t', index_col=0)
+     data = flashr.flash_set_data(Z.values)
+     fit = flashr.flash(data, var_type='constant', backfit=True)
+     with open('flash-result.pkl', 'wb') as f:
+       pickle.dump(fit, f)
+   #+END_SRC
+
+   #+BEGIN_SRC sh :dir :dir /scratch/midway2/aksarkar/fqtl/
+     sbatch --partition=broadwl -n1 -c28 --exclusive --mem=16G --time=4:00:00 --job-name=flash
+     #!/bin/bash
+     source activate fqtl
+     module load htslib
+     module load plink
+     python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/apply-flash.py
+   #+END_SRC
+
+   #+RESULTS:
+   : Submitted batch job 58222919
+
+   Read the results.
+
+   #+BEGIN_SRC ipython
+     Z = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz', sep='\t', index_col=0)
+     # Explicitly call numpy2ri instead of pandas2ri because flashr doesn't support
+     # data frames: https://github.com/stephenslab/flashr/issues/94
+     data = flashr.flash_set_data(rpy2.robjects.numpy2ri.numpy2ri(Z.values))
+     with open('/scratch/midway2/aksarkar/fqtl/flash-result.pkl', 'rb') as f:
+       fit = pickle.load(f)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[180]:
+   :END:
+
+   Count the number of factors.
+
+   #+BEGIN_SRC ipython
+     K = np.array(fit[0])
+     K
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[188]:
+   : array([47], dtype=int32)
+   :END:
+
+   Recover the modules.
+
+   #+BEGIN_SRC ipython
+     Z = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz', sep='\t', index_col=0)
+     gene_modules = pd.DataFrame(np.array(fit[3].rx2('l')), index=Z.index)
+     trait_modules = pd.DataFrame(np.array(fit[3].rx2('f')), index=Z.columns)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[189]:
+   :END:
+
+   Estimate lfsr for the factors and loadings.
+
+   #+BEGIN_SRC ipython :async t
+     M = 5000
+     T = flashr.flash_f_sampler(data, fit[fit.names.index('fit')], np.arange(1, K + 1))(M)
+     trait_pr_pos = np.stack([np.sign(np.array(T[i])) == 1] for i in range(M)).mean(axis=0).reshape(trait_modules.shape)
+     trait_pr_neg = np.stack([np.sign(np.array(T[i])) == -1] for i in range(M)).mean(axis=0).reshape(trait_modules.shape)
+     trait_lfsr = np.fmin(trait_pr_pos, trait_pr_neg)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[190]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     pd.DataFrame(trait_lfsr, index=Z.columns).to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz', sep='\t', compression='gzip')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[195]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     trait_lfsr = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz', sep='\t').values
+   #+END_SRC
+
+   Report the trait modules.
+
+   #+BEGIN_SRC ipython
+     (pd.concat({i: trait_modules[i][trait_lfsr[:,i] < 0.01] for i in range(trait_modules.shape[1])})
+      .reset_index()
+      .groupby('level_0')
+      .apply(lambda x: x.loc[x[0].abs().sort_values(ascending=False).index])
+      .reset_index(drop=True)
+      .to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-modules.txt.gz', compression='gzip', sep='\t'))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[196]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/flashr-trait-modules.png
+     plt.clf()
+     plt.gcf().set_size_inches(7, 5)
+     W = np.where(trait_lfsr < 0.01, trait_modules, 0)
+     module_order = order(W.T)
+     trait_order = np.argsort(np.abs(W[:,module_order]).argmax(axis=1))
+     plt.imshow(W.T[:,trait_order][module_order], cmap=colorcet.cm['coolwarm'], vmin=-1, vmax=1)
+     cb = plt.colorbar(shrink=0.35)
+     cb.set_label('Normalized loading')
+     plt.xlabel('Traits')
+     plt.xticks([])
+     plt.ylabel('Modules')
+     plt.yticks([])
+     plt.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[203]:
+   [[file:figure/analysis.org/flashr-trait-modules.png]]
+   :END:
+
+   Report the gene modules.
+
+   #+BEGIN_SRC ipython
+     (pd.concat({i: gene_modules[i][np.abs(gene_modules[i]) > 0.05] for i in range(gene_modules.shape[1])})
+      .reset_index()
+      .groupby('level_0')
+      .apply(lambda x: x.loc[x[0].abs().sort_values(ascending=False).index])
+      .reset_index(drop=True)
+      .to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz', compression='gzip', sep='\t'))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[51]:
+   :END:
+
+   Compute pathway enrichments for the gene modules using PANTHER.
+
+   #+BEGIN_SRC bash
+     function z {
+         zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz | \
+             awk -vm=$1 '$2 == m {print $3}' | \
+             curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F organism="Homo sapiens" -F geneList=@- -F enrichmentType=fullGO_process -F type=enrichment -F correction=FDR >/scratch/midway2/aksarkar/fqtl/twas/panther-module-$1.txt
+     }
+     export -f z
+     z 0
+   #+END_SRC
+
+   #+RESULTS:
+
+   Read the pathway enrichments.
+
+   #+BEGIN_SRC ipython
+     panther_results = (pd.concat([pd.read_csv(f'/scratch/midway2/aksarkar/fqtl/twas/panther-module-{i}.txt', sep='\t', index_col=None)
+                                  for i in range(47)], keys=range(47))
+                        .reset_index(level=0))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[107]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     panther_results.to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways.txt.gz', sep='\t', index=None)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[108]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     (panther_results[panther_results['FDR'] < 0.05]
+      .groupby('level_0')
+      .apply(lambda x: pd.Series(list(set(x['Name']))))
+      .reset_index(level=1, drop=True)
+      .to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways-fdr-05.txt.gz', sep='\t', header=True))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[110]:
+   :END:
+
+** K-means clustering of TWAS
+
+   #+BEGIN_SRC ipython
+     Z = pd.read_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+BEGIN_SRC ipython
+   #+END_SRC
+
+   #+BEGIN_SRC ipython
+     m1 = sklearn.cluster.KMeans(n_clusters=20).fit(Z.T.fillna(0))
+     pd.concat({i: pd.Series(Z.columns[m1.labels_ == i]) for i in range(m1.n_clusters)}).reset_index().to_csv('/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-k-means.txt.gz', compression='gzip', sep='\t')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[280]:
+   :END:
+
+* References                                                       :noexport:
+
+  - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5339290/
+  - https://www.ncbi.nlm.nih.gov/pubmed/29022597
+

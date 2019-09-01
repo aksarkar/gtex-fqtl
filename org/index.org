@@ -1,0 +1,16 @@
+#+TITLE: Factored QTL analysis
+#+SETUPFILE: setup.org
+
+We develop /Factored QTL analysis/ (~fqtl~), a multivariate, sparse multiple
+regression model to jointly identify causal eQTLs and tissues of action. The
+key idea of our method is to assume that the matrix of effect sizes is low rank
+and sparse, and use a novel Bayesian prior to estimate the posterior
+distribution of that matrix.
+
+- [[file:analysis.org][Analysis of tissue-specific TWAS]]
+
+Technical details:
+
+- [[file:pooled.org][Pooled QTL analysis]]
+- [[file:two-tissue.org][Two tissue pooled analysis]]
+- [[file:dense.org][Dense factors]]
