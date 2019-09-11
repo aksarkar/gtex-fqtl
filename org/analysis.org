@@ -252,35 +252,108 @@
    tissues with larger sample sizes. This is in constrast to what we observe in
    applying fQTL to GTEx v8.
 
+* Tissue-specific TWAS
+  :PROPERTIES:
+  :CUSTOM_ID: twas
+  :END:
+** Pre-process the summary statistics
+
+   The GTEx consortium provided summary statistics in hg38. LiftOver back to
+   hg19 to combine with v6p models.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
+     find gtex_gwas_hg38_tabix/ -name "*.bed.gz" >manifest
+     qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 1-114
+     set -e
+     function lift () {
+         in=gtex-gwas-hg19/$(basename $1 .bed.gz).hg38
+         zcat $1 | awk -vOFS='\t' 'NR > 1 {print $1, $2, $3, $4"|"$5"|"$6"|"$7}' >$in
+         out=gtex-gwas-hg19/$(basename $1 .bed.gz).hg19
+         liftOver $in /broad/compbio/data/gtex_eqtl_tabix/hg38ToHg19.over.chain.gz $out $out.unmapped
+         sort -k1,1 -k2,2n $out | tr '|' '\t' | bgzip >gtex-gwas-hg19/$(basename $1)
+         tabix gtex-gwas-hg19/$(basename $1)
+     }
+     readarray -O1 tasks <manifest
+     lift ${tasks[$SGE_TASK_ID]}
    #+END_SRC
 
    #+RESULTS:
-   :RESULTS:
-   # Out[73]:
-   : (0.8261525353495132, 4.855677357713278e-13)
-   :END:
+   : 11694381.1-114:1
 
-   Describe how many more eGenes ~fqtl~ discovers.
+** AD replication data
 
-   #+BEGIN_SRC ipython
-     (J['num_egenes_fqtl'] / J['num_egenes_snp']).describe()
+  Download ADGC phase 2 (https://www.niagads.org/datasets/ng00076)
+
+  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
+    curl -sL "https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&type=field_collection_item&id=100&force=" -o adgc2.txt
+    gzip adgc2.txt
+  #+END_SRC
+
+  The data is on hg37.
+
+  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
+    zcat adgc2.txt.gz | awk 'NR == 2 {split($1, a, ":"); print a[2]; exit}' | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+  #+END_SRC
+
+  #+RESULTS:
+  | chr1 | 100000012 | 100000012 | rs10875231 |   | + | 224514623 | GRCh37.p5,reference | G/T | genomic | snp | byFrequency |   |   | unknown | exact | 2 |   | 14 | 1000GENOMES,ABI,BCM-HGSC-SUB,BGI,BUSHMAN,COMPLETE_GENOMICS,CSHL-HAPMAP,ENSEMBL,GMI,HGSV,ILLUMINA-UK,PERLEGEN,PJP,SC_SNP | 1 | T | 2184 | 0.3086 | submitter_linkout,1,assembly_specific,MAF>5%_in_1+population,MAF>5%_in_all_population,double_hit_by_Mullikin |   | 120 | 137 | unknown |
+
+  The publicly available data does not have \(z\)-scores or odds ratios.
+
+  Download GWAX (https://www.nature.com/articles/ng.3766)
+
+  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+    qsub -terse -cwd -V -j y -sync n
+    curl -sOL "http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"
+  #+END_SRC
+
+  #+RESULTS:
+  : 11674089
+
+  The data is on hg37.
+
+  #+BEGIN_SRC shell
+    zgrep -wm1 rs144155419 /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+  #+END_SRC
+
+  #+RESULTS:
+  | chr1 | 717587 | 717587 | rs144155419 |   | + | 224514624 | GRCh37.p5,reference | A/G | genomic | snp | by1000G | 0 | 0 | unknown | exact | 2 |   | 1 | 1000GENOMES | 1 | A | 2184 | 0.0064 | 1,assembly_specific |   | 134 | 134 | unknown |
+
+  Convert \(p\)-values to \(z\)-scores and format the data.
+
+  #+BEGIN_SRC ipython :async t
+    data = pd.read_csv('/broad/hptmp/aksarkar/AD.gwax.assoc.gz', sep=' ')
+    data['chr'] = data['CHR'].apply(lambda x: f'chr{x}')
+    data['start'] = data['BP']
+    # Important: we removed indels from GTEx
+    data['end'] = data.apply(lambda x: x['BP'] if len(x['A1']) == len(x['A2']) == 1 else np.nan, axis=1).astype('Int64')
+    data['zscore'] = np.sqrt(st.chi2(1).sf(data['P'])) * np.sign(np.log(data['OR']))
+    data['pval'] = data['P']
+    (data[['chr', 'start', 'end', 'A1', 'A2', 'zscore', 'pval']]
+     .dropna()
+     .rename({'A1': 'a1', 'A2': 'a2'})
+     .to_csv('/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed.gz', sep='\t', compression='gzip'))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[10]:
+  :END:
+
+** Prepare the genotype matrices
+
+   Extract genotypes within 1 megabase of the TSS for each gene. Genes are
+   indexed in the manifest.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/geno/
+     awk '$6 >= 10' /broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-*-valid.genes.txt >manifest
+     qsub -cwd -V -terse -sync n -j y -N plink -t 2-100 -l h_vmem=2G
+     awk -vn=$SGE_TASK_LAST -vi=$SGE_TASK_ID 'NR % n == i - 1 {w = 1000000; ub = $4 + w; if ($4 > w) {lb = $4 - w} else {lb = 0} system("plink --memory 2000 --bfile /broad/compbio/data/GTEx/GTEx_restricted/v6_plink/BED_qc/chr"$3" --make-bed --chr "$3" --from-bp "lb" --to-bp "ub" --out "$1)}' manifest
    #+END_SRC
 
    #+RESULTS:
-   :RESULTS:
-   # Out[74]:
-   #+BEGIN_EXAMPLE
-     count    48.000000
-     mean      2.263618
-     std       0.308351
-     min       1.636869
-     25%       2.090294
-     50%       2.175653
-     75%       2.400919
-     max       3.099417
-     dtype: float64
-   #+END_EXAMPLE
-   :END:
+   : 11696455.2-100:1
+
 
 * AD TWAS
 
