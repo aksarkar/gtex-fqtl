@@ -354,13 +354,116 @@
    #+RESULTS:
    : 11696455.2-100:1
 
+** Develop TWAS implementation
 
-* AD TWAS
+   #+BEGIN_SRC ipython
+     prefix = '/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/1002/50'
+     snp_annot = pd.read_csv(f'{prefix}/fqtl.snp.info.gz', sep='\t', header=None)
+     tis_annot = pd.read_csv(f'{prefix}/fqtl.tis.info.gz', sep='\t', header=None)
+     snp_lodds = pd.read_csv(f'{prefix}/fqtl.snp.lodds.txt.gz', sep='\t', header=None)
+     keep = (sp.expit(snp_lodds) > .95).any(axis=0)
+     L = pd.read_csv(f'{prefix}/fqtl.snp.theta.txt.gz', sep='\t', header=None)
+     L.index = snp_annot[3]
+     F = pd.read_csv(f'{prefix}/fqtl.tis.theta.txt.gz', sep='\t', header=None)
+     F.index = tis_annot[1].apply(lambda x: x[:-9])
+     B = L.loc[:,keep].dot(F.loc[:,keep].T)
+   #+END_SRC
 
-* Tissue-specific TWAS
-  :PROPERTIES:
-  :CUSTOM_ID: twas
-  :END:
+   #+RESULTS:
+   :RESULTS:
+   # Out[29]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     with pyplink.PyPlink('/broad/hptmp/aksarkar/geno/1002') as f:
+       fam = f.get_fam()
+       bim = f.get_bim()
+       x = np.ma.masked_equal(np.array([row for _, row in f.iter_geno()]).T, -1).astype(float)
+       x -= x.mean()
+       x /= x.std()
+       x = pd.DataFrame(x, index=fam['fid'], columns=bim['pos'])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[103]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     u, d, vt = np.linalg.svd(x, full_matrices=False)
+     (d > 1e-8).sum()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[93]:
+   : 450
+   :END:
+
+   #+BEGIN_SRC ipython
+     genes = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
+     f = tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz')
+     row = genes.loc[1002]
+     gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
+               .astype(dict(enumerate([str, int, int, str, str, float, float]))))
+     gwas_z.head()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[131]:
+   #+BEGIN_EXAMPLE
+     0         1         2  3     4       5       6
+     0  chr1  31083477  31083478  G     A -1.3432  0.1790
+     1  chr1  31083729  31083730  A  ATCT -1.6553  0.0979
+     2  chr1  31083985  31083986  T     C -1.4981  0.1340
+     3  chr1  31084179  31084180  A     G  1.7782  0.0754
+     4  chr1  31084233  31084234  T     A -1.6000  0.1100
+   #+END_EXAMPLE
+   :END:
+
+   #+BEGIN_SRC ipython
+     twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
+     twas_data.head(n=1)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[133]:
+   #+BEGIN_EXAMPLE
+     2  3  4   0_x       1_x 3_x 4_x     5_x      6  0_y  \
+     2_x
+     31083478  31083478  G  A  chr1  31083477   G   A -1.3432  0.179    1
+
+     1_y  2_y       3_y 4_y 5_y
+     2_x
+     31083478  1_31083478_A_G_b37    0  31083478   G   A
+   #+END_EXAMPLE
+   :END:
+
+   #+BEGIN_SRC ipython
+     bt = B.loc[twas_data['3_y'], 'Artery_Tibial']
+     z = twas_data['5_x']
+     X = x.loc[:,twas_data['3_y']]
+     R = X.T.dot(X) / x.shape[0]
+     twas(bt, z, R)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[130]:
+   : 0.4641751949731608
+   :END:
+
+   #+BEGIN_SRC ipython
+     if __name__ == '__main__':
+       # Important: this doesn't get closed properly, so we need to open it here
+       with tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz') as f:
+         for k, row in genes:
+           qtl_b, qtl_cov = load_fqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{k}/50/fqtl')
+           gwas_z = pd.DataFrame(f.query(f'chr{row[2]}', row[3] - 1e6, row[3] + 1e6))
+   #+END_SRC
+
 ** Read the TWAS summary statistics
 
    For each trait, assign each gene/mechanism to the best LD block.
