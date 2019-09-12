@@ -26,7 +26,7 @@
   #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
 
   #+RESULTS:
-  : 11753664
+  : 11772297
 
   #+NAME: imports
   #+BEGIN_SRC ipython
@@ -375,6 +375,7 @@
    :END:
 
    #+BEGIN_SRC ipython
+     import pyplink
      with pyplink.PyPlink('/broad/hptmp/aksarkar/geno/1002') as f:
        fam = f.get_fam()
        bim = f.get_bim()
@@ -386,7 +387,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[103]:
+   # Out[5]:
    :END:
 
    #+BEGIN_SRC ipython
@@ -456,13 +457,18 @@
    :END:
 
    #+BEGIN_SRC ipython
-     if __name__ == '__main__':
-       # Important: this doesn't get closed properly, so we need to open it here
-       with tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz') as f:
-         for k, row in genes:
-           qtl_b, qtl_cov = load_fqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{k}/50/fqtl')
-           gwas_z = pd.DataFrame(f.query(f'chr{row[2]}', row[3] - 1e6, row[3] + 1e6))
    #+END_SRC
+
+** Run TWAS
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -cwd -V -terse -j y -sync n -N twas -l h_vmem=4G,h_rt=12:00:00
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+     python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz twas/IGAP_Alzheimer.txt.gz
+   #+END_SRC
+
+   #+RESULTS:
+   : 11778533
 
 ** Read the TWAS summary statistics
 
