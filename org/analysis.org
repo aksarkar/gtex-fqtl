@@ -26,7 +26,7 @@
   #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
 
   #+RESULTS:
-  : 11772297
+  : 11926606
 
   #+NAME: imports
   #+BEGIN_SRC ipython
@@ -357,7 +357,8 @@
 ** Develop TWAS implementation
 
    #+BEGIN_SRC ipython
-     prefix = '/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/1002/50'
+     gene_id = 3110
+     prefix = f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'
      snp_annot = pd.read_csv(f'{prefix}/fqtl.snp.info.gz', sep='\t', header=None)
      tis_annot = pd.read_csv(f'{prefix}/fqtl.tis.info.gz', sep='\t', header=None)
      snp_lodds = pd.read_csv(f'{prefix}/fqtl.snp.lodds.txt.gz', sep='\t', header=None)
@@ -371,12 +372,12 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[29]:
+   # Out[10]:
    :END:
 
    #+BEGIN_SRC ipython
      import pyplink
-     with pyplink.PyPlink('/broad/hptmp/aksarkar/geno/1002') as f:
+     with pyplink.PyPlink(f'/broad/hptmp/aksarkar/geno/{gene_id}') as f:
        fam = f.get_fam()
        bim = f.get_bim()
        x = np.ma.masked_equal(np.array([row for _, row in f.iter_geno()]).T, -1).astype(float)
@@ -387,7 +388,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[5]:
+   # Out[11]:
    :END:
 
    #+BEGIN_SRC ipython
@@ -402,9 +403,10 @@
    :END:
 
    #+BEGIN_SRC ipython
+     import tabix
      genes = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
      f = tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz')
-     row = genes.loc[1002]
+     row = genes.loc[gene_id]
      gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
                .astype(dict(enumerate([str, int, int, str, str, float, float]))))
      gwas_z.head()
@@ -412,14 +414,14 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[131]:
+   # Out[13]:
    #+BEGIN_EXAMPLE
-     0         1         2  3     4       5       6
-     0  chr1  31083477  31083478  G     A -1.3432  0.1790
-     1  chr1  31083729  31083730  A  ATCT -1.6553  0.0979
-     2  chr1  31083985  31083986  T     C -1.4981  0.1340
-     3  chr1  31084179  31084180  A     G  1.7782  0.0754
-     4  chr1  31084233  31084234  T     A -1.6000  0.1100
+     0          1          2  3  4       5      6
+     0  chr1  150826409  150826410  A  G  0.0454  0.964
+     1  chr1  150826830  150826831  C  T  0.0153  0.988
+     2  chr1  150828306  150828307  G  A -0.1496  0.881
+     3  chr1  150828381  150828382  A  G -0.4175  0.676
+     4  chr1  150829146  150829147  A  G -0.4155  0.678
    #+END_EXAMPLE
    :END:
 
@@ -430,45 +432,66 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[133]:
+   # Out[14]:
    #+BEGIN_EXAMPLE
-     2  3  4   0_x       1_x 3_x 4_x     5_x      6  0_y  \
+     2  3  4   0_x        1_x 3_x 4_x    5_x      6  0_y  \
      2_x
-     31083478  31083478  G  A  chr1  31083477   G   A -1.3432  0.179    1
+     150845380  150845380  C  G  chr1  150845379   C   G  0.816  0.414    1
 
-     1_y  2_y       3_y 4_y 5_y
+     1_y  2_y        3_y 4_y 5_y
      2_x
-     31083478  1_31083478_A_G_b37    0  31083478   G   A
+     150845380  1_150845380_G_C_b37    0  150845380   C   G
    #+END_EXAMPLE
    :END:
 
    #+BEGIN_SRC ipython
-     bt = B.loc[twas_data['3_y'], 'Artery_Tibial']
+     Bs = B.loc[twas_data['3_y']]
+     Bs = Bs.loc[~Bs.index.duplicated(keep='first')]
      z = twas_data['5_x']
+     z = z.loc[~z.index.duplicated(keep='first')]
      X = x.loc[:,twas_data['3_y']]
+     X = X.loc[:,~X.columns.duplicated(keep='first')]
      R = X.T.dot(X) / x.shape[0]
-     twas(bt, z, R)
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[130]:
-   : 0.4641751949731608
+   # Out[15]:
    :END:
 
-   #+BEGIN_SRC ipython
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     mkdir -p tasks
+     awk '{print >"/broad/hptmp/aksarkar/tasks/chunk-" int(NR / 1000) ".txt"}' geno/manifest
    #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -cwd -V -terse -j y -sync n -N test -l h_vmem=1G,h_rt=0:30:00
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+     python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
+   #+END_SRC
+
+   #+RESULTS:
+   : 11926870
 
 ** Run TWAS
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-     qsub -cwd -V -terse -j y -sync n -N twas -l h_vmem=4G,h_rt=12:00:00
-     source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
-     python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz twas/IGAP_Alzheimer.txt.gz
+     find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" | parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/$(basename {} .bed.gz).txt.gz' >/broad/hptmp/aksarkar/gtex-gwas-hg19/joblist
    #+END_SRC
 
    #+RESULTS:
-   : 11778533
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=1G,h_rt=5:00:00 -t 1
+     readarray -O1 tasks < /broad/hptmp/aksarkar/gtex-gwas-hg19/joblist
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+     exec ${tasks[$SGE_TASK_ID]}
+   #+END_SRC
+
+   #+RESULTS:
+   : 11921082.1-1:1
 
 ** Read the TWAS summary statistics
 

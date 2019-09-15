@@ -8,9 +8,16 @@ import sys
 
 _sf = st.norm().sf
 
-def twas(qtl_b, gwas_z, gwas_cov):
-  T = qtl_b.dot(gwas_z) / np.sqrt(qtl_b.T.dot(gwas_cov).dot(qtl_b))
-  return T, _sf(T)
+def twas(twas_data, B, X):
+  B = B.loc[twas_data['3_y']]
+  # Hack: chr12 has a dupe
+  B = B.loc[~B.index.duplicated(keep='first')]
+  z = twas_data['5_x']
+  z = z.loc[~z.index.duplicated(keep='first')]
+  X_ = X.loc[:,twas_data['3_y']]
+  X_ = X_.loc[~X_.index.duplicated(keep='first')]
+  R = est_gwas_cov(X_)
+  return z.dot(B) / np.sqrt(np.diag(B.T.dot(R).dot(B)))
 
 def load_fqtl_model(prefix, pip_thresh=0.95):
   snp_annot = pd.read_csv(f'{prefix}/fqtl.snp.info.gz', sep='\t', header=None)
@@ -37,29 +44,34 @@ def load_geno(prefix):
 def est_gwas_cov(x, sv_thresh=1e-4):
   u, d, vt = np.linalg.svd(x, full_matrices=False)
   d[d < sv_thresh] = 0
-  return vt.T.dot(np.diag(d)).dot(vt)
+  return pd.DataFrame(vt.T.dot(np.diag(d)).dot(vt), index=x.columns, columns=x.columns)
 
 if __name__ == '__main__':
-  genes = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
   f = tabix.open(sys.argv[1])
-  result = []
+  genes = pd.read_csv(sys.argv[2], sep='\t', header=None, index_col=0)
+  result = dict()
   for k, row in genes.iterrows():
-    snp_annot, B = load_fqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{k}/50/')
+    try:
+      snp_annot, B = load_fqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{k}/50/')
+    except FileNotFoundError:
+      print(f'warning: skipping empty model ({k}: {row[1]})')
+      continue
     X = load_geno(f'/broad/hptmp/aksarkar/geno/{k}')
     gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
               .astype(dict(enumerate([str, int, int, str, str, float, float]))))
-    twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
+    try:
+      twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
+    except:
+      # Hack: genes like ENSG00000215784.4 have garbage in snp_annot
+      print(f'warning: skipping corrupted model ({k}: {row[1]})')
+      continue
     if twas_data.empty:
       print(f'warning: no SNPs left ({k}: {row[1]})')
-    if twas_data.shape[0] < 0.5 * gwas_z.shape[0]:
+      continue
+    elif twas_data.shape[0] < 0.5 * snp_annot.shape[0]:
       print(f'warning: many SNPs lost ({k}: {row[1]})')
-    for tis in B.columns:
-      bt = B.loc[twas_data['3_y'], tis]
-      z = twas_data['5_x']
-      X_ = X.loc[:,twas_data['3_y']]
-      R = est_gwas_cov(X_)
-      stat, p = twas(bt, z, R)
-      result.append([row[1], tis, stat, p])
-  result = pd.DataFrame(result)
-  result.columns = ['gene', 'tissue', 'z', 'p']
-  result.to_csv(sys.argv[2], sep='\t', compression='gzip')
+    else:
+      print(f'estimating sTWAS statistics ({k}: {row[1]})')
+    result[row[1]] = twas(twas_data, B, X)
+  result = pd.DataFrame.from_dict(result, orient='index')
+  result.to_csv(sys.argv[3], sep='\t', compression='gzip')
