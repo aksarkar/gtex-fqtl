@@ -57,8 +57,11 @@ if __name__ == '__main__':
       print(f'warning: skipping empty model ({k}: {row[1]})')
       continue
     X = load_geno(f'/broad/hptmp/aksarkar/geno/{k}')
-    gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
-              .astype(dict(enumerate([str, int, int, str, str, float, float]))))
+    try:
+      gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
+                .astype(dict(enumerate([str, int, int, str, str, float, float]))))
+    except tabix.TabixError:
+      print(f'warning: skipping empty cis-region in GWAS file {sys.argv[1]} ({k}: {row[1]})')
     try:
       twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
     except:

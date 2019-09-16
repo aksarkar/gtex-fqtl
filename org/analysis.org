@@ -278,7 +278,7 @@
    #+END_SRC
 
    #+RESULTS:
-   : 11694381.1-114:1
+   : 11935777.1-114:1
 
 ** AD replication data
 
@@ -372,7 +372,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[10]:
+   # Out[4]:
    :END:
 
    #+BEGIN_SRC ipython
@@ -388,7 +388,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[11]:
+   # Out[5]:
    :END:
 
    #+BEGIN_SRC ipython
@@ -405,7 +405,7 @@
    #+BEGIN_SRC ipython
      import tabix
      genes = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
-     f = tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz')
+     f = tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_UKB_2395_4_Hair_or_balding_pattern_Pattern_4.bed.gz')
      row = genes.loc[gene_id]
      gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
                .astype(dict(enumerate([str, int, int, str, str, float, float]))))
@@ -478,20 +478,20 @@
 ** Run TWAS
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-     find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" | parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/$(basename {} .bed.gz).txt.gz' >/broad/hptmp/aksarkar/gtex-gwas-hg19/joblist
+     find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" | parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}' >/broad/hptmp/aksarkar/twas/joblist
    #+END_SRC
 
    #+RESULTS:
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=1G,h_rt=5:00:00 -t 1
-     readarray -O1 tasks < /broad/hptmp/aksarkar/gtex-gwas-hg19/joblist
+     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=1G,h_rt=5:00:00 -t 1-115
+     readarray -O1 tasks < /broad/hptmp/aksarkar/twas/joblist
      source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
      exec ${tasks[$SGE_TASK_ID]}
    #+END_SRC
 
    #+RESULTS:
-   : 11921082.1-1:1
+   : 11937899.1-115:1
 
 ** Read the TWAS summary statistics
 
