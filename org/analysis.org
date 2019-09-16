@@ -26,7 +26,7 @@
   #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
 
   #+RESULTS:
-  : 11926606
+  : 11935576
 
   #+NAME: imports
   #+BEGIN_SRC ipython
@@ -66,6 +66,26 @@
   :RESULTS:
   # Out[3]:
   :END:
+
+* Simulation
+** Generate the data
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/simulation/
+     parallel --dry-run ./sim_data.sh {} /broad/hptmp/aksarkar/simulation/{1}/{#} :::: /broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/simulation/selected.genes ::: 1 2 3 ::: 0.05 0.1 0.15 0.2 0.3 ::: 1 3 5 ::: 5 10 20 30 ::: 1001 >joblist
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/simulation/
+     qsub -cwd -V -terse -sync n -j y -N sim -l h_vmem=2G -t 1
+     readarray -O1 tasks < /broad/hptmp/aksarkar/simulation/joblist
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl
+     pushd /broad/compbio/ypp/gtex/analysis/fqtl-gtex/
+     exec ${tasks[$SGE_TASK_ID]}
+   #+END_SRC
+
+   #+RESULTS:
+   : 11937892.1-1:1
 
 * Multi-tissue eQTL mapping
   :PROPERTIES:
