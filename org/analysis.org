@@ -263,7 +263,7 @@
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
      find gtex_gwas_hg38_tabix/ -name "*.bed.gz" >manifest
-     qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 1-114
+     qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 1-114 -l h_vmem=4G
      set -e
      function lift () {
          in=gtex-gwas-hg19/$(basename $1 .bed.gz).hg38
