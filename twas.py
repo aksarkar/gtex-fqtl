@@ -10,12 +10,13 @@ _sf = st.norm().sf
 
 def twas(twas_data, B, X):
   B = B.loc[twas_data['3_y']]
-  # Hack: chr12 has a dupe
+  # Hack: chr12 has a dupe "12_48000000_T_C_b37: 2 times"
   B = B.loc[~B.index.duplicated(keep='first')]
   z = twas_data['5_x']
   z = z.loc[~z.index.duplicated(keep='first')]
-  X_ = X.loc[:,twas_data['3_y']]
-  X_ = X_.loc[~X_.index.duplicated(keep='first')]
+  X_ = X.loc[:,~X.columns.duplicated(keep='first')]
+  X_ = X_.loc[:,twas_data['3_y']]
+  X_ = X_.loc[:,~X_.columns.duplicated(keep='first')]
   R = est_gwas_cov(X_)
   return z.dot(B) / np.sqrt(np.diag(B.T.dot(R).dot(B)))
 
