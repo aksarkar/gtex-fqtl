@@ -45,7 +45,7 @@ def load_geno(prefix):
 def est_gwas_cov(x, sv_thresh=1e-4):
   u, d, vt = np.linalg.svd(x, full_matrices=False)
   d[d < sv_thresh] = 0
-  return pd.DataFrame(vt.T.dot(np.diag(d)).dot(vt), index=x.columns, columns=x.columns)
+  return pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt), index=x.columns, columns=x.columns)
 
 if __name__ == '__main__':
   f = tabix.open(sys.argv[1])
@@ -63,6 +63,7 @@ if __name__ == '__main__':
                 .astype(dict(enumerate([str, int, int, str, str, float, float]))))
     except tabix.TabixError:
       print(f'warning: skipping empty cis-region in GWAS file {sys.argv[1]} ({k}: {row[1]})')
+      continue
     try:
       twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
     except:
