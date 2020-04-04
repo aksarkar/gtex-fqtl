@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 13:10 -->
+<!-- 2020-04-04 Sat 13:26 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>fQTL models</title>
@@ -288,28 +288,28 @@ We previously fit <code>fqtl</code> models for 39,998 genes across 44 tissues fr
 <h2 id="org0e7d827">Setup</h2>
 <div class="outline-text-2" id="text-org0e7d827">
 <div class="org-src-container">
-<pre class="src src-ipython" id="orgca7ae8c"><span style="color: #00ff00;">import</span> glob
-<span style="color: #00ff00;">import</span> itertools <span style="color: #00ff00;">as</span> it
-<span style="color: #00ff00;">import</span> os.path
-<span style="color: #00ff00;">import</span> numpy <span style="color: #00ff00;">as</span> np
-<span style="color: #00ff00;">import</span> pandas <span style="color: #00ff00;">as</span> pd
-<span style="color: #00ff00;">import</span> scipy.linalg <span style="color: #00ff00;">as</span> sl
-<span style="color: #00ff00;">import</span> scipy.special <span style="color: #00ff00;">as</span> sp
-<span style="color: #00ff00;">import</span> scipy.stats <span style="color: #00ff00;">as</span> st
+<pre class="src src-ipython" id="orgca7ae8c"><span class="org-keyword">import</span> glob
+<span class="org-keyword">import</span> itertools <span class="org-keyword">as</span> it
+<span class="org-keyword">import</span> os.path
+<span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
+<span class="org-keyword">import</span> pandas <span class="org-keyword">as</span> pd
+<span class="org-keyword">import</span> scipy.linalg <span class="org-keyword">as</span> sl
+<span class="org-keyword">import</span> scipy.special <span class="org-keyword">as</span> sp
+<span class="org-keyword">import</span> scipy.stats <span class="org-keyword">as</span> st
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">%matplotlib inline
-%config <span style="color: #0000ff;">InlineBackend.figure_formats</span> = <span style="color: #00ff00;">set</span>([<span style="color: #00ffff;">'retina'</span>])
+%config <span class="org-variable-name">InlineBackend.figure_formats</span> = <span class="org-builtin">set</span>([<span class="org-string">'retina'</span>])
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">import</span> colorcet
-<span style="color: #00ff00;">import</span> matplotlib
-<span style="color: #00ff00;">import</span> matplotlib.pyplot <span style="color: #00ff00;">as</span> plt
-<span style="color: #0000ff;">plt.rcParams</span>[<span style="color: #00ffff;">'font.family'</span>] = <span style="color: #00ffff;">'Nimbus Sans'</span>
+<pre class="src src-ipython"><span class="org-keyword">import</span> colorcet
+<span class="org-keyword">import</span> matplotlib
+<span class="org-keyword">import</span> matplotlib.pyplot <span class="org-keyword">as</span> plt
+<span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'font.family'</span>] = <span class="org-string">'Nimbus Sans'</span>
 </pre>
 </div>
 </div>
@@ -328,11 +328,11 @@ We previously fit <code>fqtl</code> models for 39,998 genes across 44 tissues fr
 </div>
 
 <div class="org-src-container">
-<pre class="src src-shell">qsub -cwd -V -terse -sync n -j y -N sim -l <span style="color: #0000ff;">h_vmem</span>=2G -t 1
-<span style="color: #00ff00;">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/simulation/joblist
-<span style="color: #00ff00;">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl
-<span style="color: #00ff00;">pushd</span> /broad/compbio/ypp/gtex/analysis/fqtl-gtex/
-<span style="color: #00ff00;">exec</span> ${<span style="color: #0000ff;">tasks</span>[$<span style="color: #0000ff;">SGE_TASK_ID</span>]}
+<pre class="src src-shell">qsub -cwd -V -terse -sync n -j y -N sim -l <span class="org-variable-name">h_vmem</span>=2G -t 1
+<span class="org-builtin">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/simulation/joblist
+<span class="org-builtin">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl
+<span class="org-builtin">pushd</span> /broad/compbio/ypp/gtex/analysis/fqtl-gtex/
+<span class="org-keyword">exec</span> ${<span class="org-variable-name">tasks</span>[$<span class="org-variable-name">SGE_TASK_ID</span>]}
 </pre>
 </div>
 </div>
@@ -367,20 +367,20 @@ Extract the gene expression matrices to get sample sizes.
 cp /broad/compbio/data/GTEx/v6_GTEx_Analysis_2015-01-12/eqtl_data/GTEx_Analysis_2015-01-12_eQTLInputFiles_geneLevelNormalizedExpressionMatrices.tar.gz .
 mkdir -p expr
 tar xf GTEx_Analysis_2015-01-12_eQTLInputFiles_geneLevelNormalizedExpressionMatrices.tar.gz -C expr
-parallel --halt=now,<span style="color: #0000ff;">fail</span>=1 -X gzip ::: expr/*.txt
+parallel --halt=now,<span class="org-variable-name">fail</span>=1 -X gzip ::: expr/*.txt
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">qsub -cwd -V -terse -j y
-<span style="color: #00ff00;">function</span> <span style="color: #0000ff;">z</span> () { zcat $<span style="color: #0000ff;">1</span> | awk -vf=$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span> _Analysis.expr.txt.gz) <span style="color: #00ffff;">'NR == 1 {n = NF - 1} END {print f, n, NR - 1; exit}'</span>; }
-<span style="color: #00ff00;">export</span> -f z
-parallel -j1 z ::: *.expr.txt.gz | awk <span style="color: #00ffff;">'BEGIN {print "tissue", "num_samples", "num_genes"} {print}'</span> &gt;sample-sizes.txt
+<span class="org-keyword">function</span> <span class="org-function-name">z</span> () { zcat $<span class="org-variable-name">1</span> | awk -vf=$(<span class="org-sh-quoted-exec">basename</span> $<span class="org-variable-name">1</span> _Analysis.expr.txt.gz) <span class="org-string">'NR == 1 {n = NF - 1} END {print f, n, NR - 1; exit}'</span>; }
+<span class="org-builtin">export</span> -f z
+parallel -j1 z ::: *.expr.txt.gz | awk <span class="org-string">'BEGIN {print "tissue", "num_samples", "num_genes"} {print}'</span> &gt;sample-sizes.txt
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">sample_sizes</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/expr/sample-sizes.txt'</span>, sep=<span style="color: #00ffff;">' '</span>)
+<pre class="src src-ipython"><span class="org-variable-name">sample_sizes</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/fqtl/expr/sample-sizes.txt'</span>, sep=<span class="org-string">' '</span>)
 </pre>
 </div>
 
@@ -389,7 +389,7 @@ Read the GTEx tissue colors.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">colors</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/data/tissues.colors.txt'</span>, header=<span style="color: #00ffff;">None</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+<pre class="src src-ipython"><span class="org-variable-name">colors</span> = pd.read_csv(<span class="org-string">'/broad/compbio/aksarkar/projects/gtex-fqtl/data/tissues.colors.txt'</span>, header=<span class="org-constant">None</span>, sep=<span class="org-string">'\t'</span>)
 </pre>
 </div>
 
@@ -398,22 +398,22 @@ Parse the <code>fqtl</code> results.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">def</span> <span style="color: #0000ff;">unpack</span>(X):
-  <span style="color: #00ff00;">if</span> <span style="color: #00ffff;">'|'</span> <span style="color: #00ff00;">in</span> X.iloc[3]:
-    <span style="color: #0000ff;">T</span> = pd.DataFrame(it.zip_longest(*X.<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">str</span>(x).split(<span style="color: #00ffff;">'|'</span>)).values, fillvalue=np.nan))
-    <span style="color: #0000ff;">T.columns</span> = X.index
-    T.fillna(T.iloc[0], inplace=<span style="color: #00ffff;">True</span>)
-    <span style="color: #00ff00;">return</span> T
-  <span style="color: #00ff00;">else</span>:
-    <span style="color: #00ff00;">return</span> X.to_frame().T
+<pre class="src src-ipython"><span class="org-keyword">def</span> <span class="org-function-name">unpack</span>(X):
+  <span class="org-keyword">if</span> <span class="org-string">'|'</span> <span class="org-keyword">in</span> X.iloc[3]:
+    <span class="org-variable-name">T</span> = pd.DataFrame(it.zip_longest(*X.<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: <span class="org-builtin">str</span>(x).split(<span class="org-string">'|'</span>)).values, fillvalue=np.nan))
+    <span class="org-variable-name">T.columns</span> = X.index
+    T.fillna(T.iloc[0], inplace=<span class="org-constant">True</span>)
+    <span class="org-keyword">return</span> T
+  <span class="org-keyword">else</span>:
+    <span class="org-keyword">return</span> X.to_frame().T
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">fqtl_res</span> = pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/chr{i}/50/combined.txt.gz'</span>, header=<span style="color: #00ffff;">None</span>, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
-<span style="color: #0000ff;">fqtl_res.columns</span> = [<span style="color: #00ffff;">'gene'</span>, <span style="color: #00ffff;">'chr'</span>, <span style="color: #00ffff;">'tss'</span>, <span style="color: #00ffff;">'tissue_idx'</span>, <span style="color: #00ffff;">'tissue_name'</span>, <span style="color: #00ffff;">'tissue_theta'</span>, <span style="color: #00ffff;">'tissue_se'</span>, <span style="color: #00ffff;">'tissue_lodds'</span>, <span style="color: #00ffff;">'snp_name'</span>, <span style="color: #00ffff;">'snp_theta'</span>, <span style="color: #00ffff;">'snp_se'</span>, <span style="color: #00ffff;">'snp_lodds'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'pip'</span>]
-<span style="color: #0000ff;">fqtl_res</span> = pd.concat([unpack(x) <span style="color: #00ff00;">for</span> _, x <span style="color: #00ff00;">in</span> fqtl_res[fqtl_res[<span style="color: #00ffff;">'pip'</span>] == 0.95].iterrows()])
-fqtl_res.to_csv(<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, compression=<span style="color: #00ffff;">'gzip'</span>)
+<pre class="src src-ipython"><span class="org-variable-name">fqtl_res</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/chr{i}/50/combined.txt.gz'</span>, header=<span class="org-constant">None</span>, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(1, 23)])
+<span class="org-variable-name">fqtl_res.columns</span> = [<span class="org-string">'gene'</span>, <span class="org-string">'chr'</span>, <span class="org-string">'tss'</span>, <span class="org-string">'tissue_idx'</span>, <span class="org-string">'tissue_name'</span>, <span class="org-string">'tissue_theta'</span>, <span class="org-string">'tissue_se'</span>, <span class="org-string">'tissue_lodds'</span>, <span class="org-string">'snp_name'</span>, <span class="org-string">'snp_theta'</span>, <span class="org-string">'snp_se'</span>, <span class="org-string">'snp_lodds'</span>, <span class="org-string">'factor'</span>, <span class="org-string">'pip'</span>]
+<span class="org-variable-name">fqtl_res</span> = pd.concat([unpack(x) <span class="org-keyword">for</span> _, x <span class="org-keyword">in</span> fqtl_res[fqtl_res[<span class="org-string">'pip'</span>] == 0.95].iterrows()])
+fqtl_res.to_csv(<span class="org-string">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, compression=<span class="org-string">'gzip'</span>)
 </pre>
 </div>
 
@@ -422,7 +422,7 @@ Read the <code>fqtl</code> results.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">fqtl_res</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+<pre class="src src-ipython"><span class="org-variable-name">fqtl_res</span> = pd.read_csv(<span class="org-string">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
 </pre>
 </div>
 
@@ -431,7 +431,7 @@ Count how many genes we retained at least one factor/loading pair for.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">len</span>(fqtl_res[<span style="color: #00ffff;">'gene'</span>].unique())
+<pre class="src src-ipython"><span class="org-builtin">len</span>(fqtl_res[<span class="org-string">'gene'</span>].unique())
 </pre>
 </div>
 
@@ -450,7 +450,7 @@ Read the univariate eGenes (\(q < 0.05\)).
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">univariate_res</span> = {os.path.basename(f[:-24]): pd.read_csv(f, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> f <span style="color: #00ff00;">in</span> glob.glob(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/egenes-filtered/*.filteredEGenes'</span>)}
+<pre class="src src-ipython"><span class="org-variable-name">univariate_res</span> = {os.path.basename(f[:-24]): pd.read_csv(f, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> f <span class="org-keyword">in</span> glob.glob(<span class="org-string">'/broad/hptmp/aksarkar/fqtl/egenes-filtered/*.filteredEGenes'</span>)}
 </pre>
 </div>
 
@@ -459,7 +459,7 @@ Read the list of genes for which we fit <code>fqtl</code> models.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">valid_genes</span> = pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-{i}-valid.genes.txt'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
+<pre class="src src-ipython"><span class="org-variable-name">valid_genes</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-{i}-valid.genes.txt'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(1, 23)])
 </pre>
 </div>
 
@@ -468,27 +468,27 @@ Plot the relationship between eGenes and sample size.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">fqtl_egenes</span> = fqtl_res.groupby(<span style="color: #00ffff;">'tissue_name'</span>)[<span style="color: #00ffff;">'gene'</span>].agg(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(x)))
-<span style="color: #0000ff;">univariate_egenes</span> = pd.DataFrame.from_dict({k: univariate_res[k].shape[0] <span style="color: #00ff00;">for</span> k <span style="color: #00ff00;">in</span> univariate_res}, orient=<span style="color: #00ffff;">'index'</span>)
-<span style="color: #0000ff;">J</span> = (sample_sizes
-     .merge(colors, left_on=<span style="color: #00ffff;">'tissue'</span>, right_on=0)
-     .merge(fqtl_egenes, left_on=<span style="color: #00ffff;">'tissue'</span>, right_on=<span style="color: #00ffff;">'tissue_name'</span>)
-     .merge(univariate_egenes, left_on=<span style="color: #00ffff;">'tissue'</span>, right_index=<span style="color: #00ffff;">True</span>)
-     .rename({<span style="color: #00ffff;">'gene'</span>: <span style="color: #00ffff;">'fqtl'</span>, <span style="color: #00ffff;">'0_y'</span>: <span style="color: #00ffff;">'univariate'</span>, 1: <span style="color: #00ffff;">'color'</span>}, axis=<span style="color: #00ffff;">'columns'</span>))
+<pre class="src src-ipython"><span class="org-variable-name">fqtl_egenes</span> = fqtl_res.groupby(<span class="org-string">'tissue_name'</span>)[<span class="org-string">'gene'</span>].agg(<span class="org-keyword">lambda</span> x: <span class="org-builtin">len</span>(<span class="org-builtin">set</span>(x)))
+<span class="org-variable-name">univariate_egenes</span> = pd.DataFrame.from_dict({k: univariate_res[k].shape[0] <span class="org-keyword">for</span> k <span class="org-keyword">in</span> univariate_res}, orient=<span class="org-string">'index'</span>)
+<span class="org-variable-name">J</span> = (sample_sizes
+     .merge(colors, left_on=<span class="org-string">'tissue'</span>, right_on=0)
+     .merge(fqtl_egenes, left_on=<span class="org-string">'tissue'</span>, right_on=<span class="org-string">'tissue_name'</span>)
+     .merge(univariate_egenes, left_on=<span class="org-string">'tissue'</span>, right_index=<span class="org-constant">True</span>)
+     .rename({<span class="org-string">'gene'</span>: <span class="org-string">'fqtl'</span>, <span class="org-string">'0_y'</span>: <span class="org-string">'univariate'</span>, 1: <span class="org-string">'color'</span>}, axis=<span class="org-string">'columns'</span>))
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
 plt.gcf().set_size_inches(4, 3)
-<span style="color: #00ff00;">for</span> _, row <span style="color: #00ff00;">in</span> J.iterrows():
-  <span style="color: #0000ff;">base</span> = row[<span style="color: #00ffff;">'univariate'</span>]
-  <span style="color: #0000ff;">top</span> = row[<span style="color: #00ffff;">'fqtl'</span>]
-  plt.scatter(row[<span style="color: #00ffff;">'num_samples'</span>], base, c=f<span style="color: #00ffff;">'{row["color"]}'</span>, s=8, marker=<span style="color: #00ffff;">'.'</span>)
-  plt.scatter(row[<span style="color: #00ffff;">'num_samples'</span>], top, c=f<span style="color: #00ffff;">'{row["color"]}'</span>, s=8, marker=<span style="color: #00ffff;">'^'</span>)
-  plt.arrow(row[<span style="color: #00ffff;">'num_samples'</span>], base, 0, top - base, lw=1, color=f<span style="color: #00ffff;">'{row["color"]}'</span>)
-plt.xlabel(<span style="color: #00ffff;">'Sample size'</span>)
-plt.ylabel(<span style="color: #00ffff;">'Number of discovered eGenes'</span>)
+<span class="org-keyword">for</span> _, row <span class="org-keyword">in</span> J.iterrows():
+  <span class="org-variable-name">base</span> = row[<span class="org-string">'univariate'</span>]
+  <span class="org-variable-name">top</span> = row[<span class="org-string">'fqtl'</span>]
+  plt.scatter(row[<span class="org-string">'num_samples'</span>], base, c=f<span class="org-string">'{row["color"]}'</span>, s=8, marker=<span class="org-string">'.'</span>)
+  plt.scatter(row[<span class="org-string">'num_samples'</span>], top, c=f<span class="org-string">'{row["color"]}'</span>, s=8, marker=<span class="org-string">'^'</span>)
+  plt.arrow(row[<span class="org-string">'num_samples'</span>], base, 0, top - base, lw=1, color=f<span class="org-string">'{row["color"]}'</span>)
+plt.xlabel(<span class="org-string">'Sample size'</span>)
+plt.ylabel(<span class="org-string">'Number of discovered eGenes'</span>)
 plt.ylim(0, 11000)
 plt.tight_layout()
 </pre>
@@ -511,7 +511,7 @@ applying fQTL to GTEx v8.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="date">Created: 2020-04-04 Sat 13:26</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

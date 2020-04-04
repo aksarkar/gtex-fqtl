@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 13:10 -->
+<!-- 2020-04-04 Sat 13:26 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dense factors</title>
@@ -328,50 +328,50 @@ Simulate the easiest version of the problem.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-R"><span style="color: #0000ff;">mnorm</span> <span style="color: #00ffff;">&lt;-</span> <span style="color: #00ff00;">function</span>(n, p) {
-  <span style="color: #00ff00;">return</span>(matrix(rnorm(n * p), n, p))
+<pre class="src src-R"><span class="org-function-name">mnorm</span> <span class="org-ess-assignment">&lt;-</span> <span class="org-ess-keyword">function</span>(n, p) {
+  <span class="org-ess-keyword">return</span>(matrix(rnorm(n * p), n, p))
 }
 
-<span style="color: #0000ff;">sim_idealized</span> <span style="color: #00ffff;">&lt;-</span> <span style="color: #00ff00;">function</span>(n, p, m, pve, seed) {
+<span class="org-function-name">sim_idealized</span> <span class="org-ess-assignment">&lt;-</span> <span class="org-ess-keyword">function</span>(n, p, m, pve, seed) {
   set.seed(seed)
-  x <span style="color: #00ffff;">&lt;-</span> mnorm(n, p)
-  l <span style="color: #00ffff;">&lt;-</span> rep(0, p)
-  l[1] <span style="color: #00ffff;">&lt;-</span> 1
-  f <span style="color: #00ffff;">&lt;-</span> rnorm(m)
-  b <span style="color: #00ffff;">&lt;-</span> tcrossprod(l, f)
-  y <span style="color: #00ffff;">&lt;-</span> x <span style="color: #00ffff;">%*%</span> b
-  e <span style="color: #00ffff;">&lt;-</span> sweep(mnorm(n, m), 2, sqrt((1 / pve - 1) * apply(y, 2, var)), <span style="color: #00ffff;">'*'</span>)
-  y <span style="color: #00ffff;">&lt;-</span> y + e
-  <span style="color: #00ff00;">return</span>(list(x=x, y=y, l=l, f=f))
+  x <span class="org-ess-assignment">&lt;-</span> mnorm(n, p)
+  l <span class="org-ess-assignment">&lt;-</span> rep(0, p)
+  l[1] <span class="org-ess-assignment">&lt;-</span> 1
+  f <span class="org-ess-assignment">&lt;-</span> rnorm(m)
+  b <span class="org-ess-assignment">&lt;-</span> tcrossprod(l, f)
+  y <span class="org-ess-assignment">&lt;-</span> x <span class="org-ess-XopX">%*%</span> b
+  e <span class="org-ess-assignment">&lt;-</span> sweep(mnorm(n, m), 2, sqrt((1 / pve - 1) * apply(y, 2, var)), <span class="org-string">'*'</span>)
+  y <span class="org-ess-assignment">&lt;-</span> y + e
+  <span class="org-ess-keyword">return</span>(list(x=x, y=y, l=l, f=f))
 }
 
-<span style="color: #0000ff;">get_fqtl_est_rank</span> <span style="color: #00ffff;">&lt;-</span> <span style="color: #00ff00;">function</span>(res, thresh=log(0.95 / 0.05)) {
-  keep <span style="color: #00ffff;">&lt;-</span> apply(res$mean.left$lodds &gt; thresh, 2, any) &amp; apply(res$mean.right$lodds &gt; thresh, 2, any)
-  <span style="color: #00ff00;">return</span>(sum(keep))
+<span class="org-function-name">get_fqtl_est_rank</span> <span class="org-ess-assignment">&lt;-</span> <span class="org-ess-keyword">function</span>(res, thresh=log(0.95 / 0.05)) {
+  keep <span class="org-ess-assignment">&lt;-</span> apply(res$mean.left$lodds &gt; thresh, 2, any) &amp; apply(res$mean.right$lodds &gt; thresh, 2, any)
+  <span class="org-ess-keyword">return</span>(sum(keep))
 }
 
-<span style="color: #0000ff;">eval_fqtl_est_rank</span> <span style="color: #00ffff;">&lt;-</span> <span style="color: #00ff00;">function</span>(ntrials, k=<span style="color: #ffff00;">NULL</span>) {
-  <span style="color: brightcyan; font-style: italic;">## </span><span style="color: brightcyan; font-style: italic;">Important: SGVB is a stochastic algorithm, so it can get different answers</span>
-  <span style="color: brightcyan; font-style: italic;">## </span><span style="color: brightcyan; font-style: italic;">even starting from a deterministic initialization.</span>
-  <span style="color: brightcyan; font-style: italic;">##</span>
-  <span style="color: brightcyan; font-style: italic;">## </span><span style="color: brightcyan; font-style: italic;">This particular simulated dataset reveals the problem we want to</span>
-  <span style="color: brightcyan; font-style: italic;">## </span><span style="color: brightcyan; font-style: italic;">investigate.</span>
-  data <span style="color: #00ffff;">&lt;-</span> sim_idealized(n=100, p=500, m=5, pve=0.5, seed=1)
-  shape <span style="color: #00ffff;">&lt;-</span> dim(data$y)
-  <span style="color: #00ff00;">if</span> (is.null(k)) {
+<span class="org-function-name">eval_fqtl_est_rank</span> <span class="org-ess-assignment">&lt;-</span> <span class="org-ess-keyword">function</span>(ntrials, k=<span class="org-ess-constant">NULL</span>) {
+  <span class="org-comment-delimiter">## </span><span class="org-comment">Important: SGVB is a stochastic algorithm, so it can get different answers</span>
+  <span class="org-comment-delimiter">## </span><span class="org-comment">even starting from a deterministic initialization.</span>
+  <span class="org-comment-delimiter">##</span>
+  <span class="org-comment-delimiter">## </span><span class="org-comment">This particular simulated dataset reveals the problem we want to</span>
+  <span class="org-comment-delimiter">## </span><span class="org-comment">investigate.</span>
+  data <span class="org-ess-assignment">&lt;-</span> sim_idealized(n=100, p=500, m=5, pve=0.5, seed=1)
+  shape <span class="org-ess-assignment">&lt;-</span> dim(data$y)
+  <span class="org-ess-keyword">if</span> (is.null(k)) {
     k = min(shape[1], shape[2])
   }
-  res <span style="color: #00ffff;">&lt;-</span> lapply(1:ntrials,
-         <span style="color: #00ff00;">function</span> (i) {
-           res <span style="color: #00ffff;">&lt;-</span> fqtl::fit.fqtl(
-             y=scale(data$y), x.mean=scale(data$x, scale=<span style="color: #ffff00;">FALSE</span>),
-             k=k, factored=<span style="color: #ffff00;">TRUE</span>,
-             do.hyper=<span style="color: #ffff00;">TRUE</span>, svd.init=<span style="color: #ffff00;">TRUE</span>,
-             <span style="color: brightcyan; font-style: italic;">## </span><span style="color: brightcyan; font-style: italic;">Important: print.interv=1 needed for full llik trace</span>
-             vbiter=5000, verbose=<span style="color: #ffff00;">FALSE</span>, print.interv=1, rseed=i)
+  res <span class="org-ess-assignment">&lt;-</span> lapply(1:ntrials,
+         <span class="org-ess-keyword">function</span> (i) {
+           res <span class="org-ess-assignment">&lt;-</span> fqtl::fit.fqtl(
+             y=scale(data$y), x.mean=scale(data$x, scale=<span class="org-ess-constant">FALSE</span>),
+             k=k, factored=<span class="org-ess-constant">TRUE</span>,
+             do.hyper=<span class="org-ess-constant">TRUE</span>, svd.init=<span class="org-ess-constant">TRUE</span>,
+             <span class="org-comment-delimiter">## </span><span class="org-comment">Important: print.interv=1 needed for full llik trace</span>
+             vbiter=5000, verbose=<span class="org-ess-constant">FALSE</span>, print.interv=1, rseed=i)
            list(llik=sum(res$llik[dim(res$llik)[1],]), rank=get_fqtl_est_rank(res))
          })
-  <span style="color: #00ff00;">return</span>(do.call(rbind, res))
+  <span class="org-ess-keyword">return</span>(do.call(rbind, res))
 }
 </pre>
 </div>
@@ -425,8 +425,8 @@ Look at the initialization.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-R">data <span style="color: #00ffff;">&lt;-</span> sim_idealized(n=100, p=500, m=5, pve=0.5, seed=1)
-svd(crossprod(scale(data$x, scale=<span style="color: #ffff00;">FALSE</span>), scale(data$y)) / shape[1])$d
+<pre class="src src-R">data <span class="org-ess-assignment">&lt;-</span> sim_idealized(n=100, p=500, m=5, pve=0.5, seed=1)
+svd(crossprod(scale(data$x, scale=<span class="org-ess-constant">FALSE</span>), scale(data$y)) / shape[1])$d
 </pre>
 </div>
 
@@ -444,18 +444,18 @@ Look at the estimated factors.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-R">res <span style="color: #00ffff;">&lt;-</span> fqtl::fit.fqtl(
-                 y=scale(data$y), x.mean=scale(data$x, scale=<span style="color: #ffff00;">FALSE</span>),
-                 k=5, factored=<span style="color: #ffff00;">TRUE</span>,
-                 do.hyper=<span style="color: #ffff00;">TRUE</span>, svd.init=<span style="color: #ffff00;">TRUE</span>,
-                 vbiter=5000, verbose=<span style="color: #ffff00;">FALSE</span>, print.interv=1, rseed=1)
+<pre class="src src-R">res <span class="org-ess-assignment">&lt;-</span> fqtl::fit.fqtl(
+                 y=scale(data$y), x.mean=scale(data$x, scale=<span class="org-ess-constant">FALSE</span>),
+                 k=5, factored=<span class="org-ess-constant">TRUE</span>,
+                 do.hyper=<span class="org-ess-constant">TRUE</span>, svd.init=<span class="org-ess-constant">TRUE</span>,
+                 vbiter=5000, verbose=<span class="org-ess-constant">FALSE</span>, print.interv=1, rseed=1)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-R">png(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/org/figure/dense.org/idealized-example-fhat.png'</span>, width=360, height=360, res=120)
-<span style="color: #00ffff;">par</span>(cex.lab=2, cex.axis=2)
-heatmap(res$mean.right$lodds, col=colorRampPalette(c(<span style="color: #00ffff;">'white'</span>, <span style="color: #00ffff;">'black'</span>))(256), xlab=<span style="color: #00ffff;">'Factor'</span>, ylab=<span style="color: #00ffff;">'Tissue'</span>)
+<pre class="src src-R">png(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/org/figure/dense.org/idealized-example-fhat.png'</span>, width=360, height=360, res=120)
+<span class="org-ess-modifiers">par</span>(cex.lab=2, cex.axis=2)
+heatmap(res$mean.right$lodds, col=colorRampPalette(c(<span class="org-string">'white'</span>, <span class="org-string">'black'</span>))(256), xlab=<span class="org-string">'Factor'</span>, ylab=<span class="org-string">'Tissue'</span>)
 dev.off()
 </pre>
 </div>
@@ -471,7 +471,7 @@ dev.off()
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="date">Created: 2020-04-04 Sat 13:26</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

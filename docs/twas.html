@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 13:10 -->
+<!-- 2020-04-04 Sat 13:26 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TWAS analysis</title>
@@ -285,28 +285,28 @@ Here, we use the fitted <code>fqtl</code> models to perform TWAS.
 <h2 id="orgbb95c24">Setup</h2>
 <div class="outline-text-2" id="text-orgbb95c24">
 <div class="org-src-container">
-<pre class="src src-ipython" id="org7be5838"><span style="color: #00ff00;">import</span> glob
-<span style="color: #00ff00;">import</span> itertools <span style="color: #00ff00;">as</span> it
-<span style="color: #00ff00;">import</span> os.path
-<span style="color: #00ff00;">import</span> numpy <span style="color: #00ff00;">as</span> np
-<span style="color: #00ff00;">import</span> pandas <span style="color: #00ff00;">as</span> pd
-<span style="color: #00ff00;">import</span> scipy.linalg <span style="color: #00ff00;">as</span> sl
-<span style="color: #00ff00;">import</span> scipy.special <span style="color: #00ff00;">as</span> sp
-<span style="color: #00ff00;">import</span> scipy.stats <span style="color: #00ff00;">as</span> st
+<pre class="src src-ipython" id="org7be5838"><span class="org-keyword">import</span> glob
+<span class="org-keyword">import</span> itertools <span class="org-keyword">as</span> it
+<span class="org-keyword">import</span> os.path
+<span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
+<span class="org-keyword">import</span> pandas <span class="org-keyword">as</span> pd
+<span class="org-keyword">import</span> scipy.linalg <span class="org-keyword">as</span> sl
+<span class="org-keyword">import</span> scipy.special <span class="org-keyword">as</span> sp
+<span class="org-keyword">import</span> scipy.stats <span class="org-keyword">as</span> st
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">%matplotlib inline
-%config <span style="color: #0000ff;">InlineBackend.figure_formats</span> = <span style="color: #00ff00;">set</span>([<span style="color: #00ffff;">'retina'</span>])
+%config <span class="org-variable-name">InlineBackend.figure_formats</span> = <span class="org-builtin">set</span>([<span class="org-string">'retina'</span>])
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">import</span> colorcet
-<span style="color: #00ff00;">import</span> matplotlib
-<span style="color: #00ff00;">import</span> matplotlib.pyplot <span style="color: #00ff00;">as</span> plt
-<span style="color: #0000ff;">plt.rcParams</span>[<span style="color: #00ffff;">'font.family'</span>] = <span style="color: #00ffff;">'Nimbus Sans'</span>
+<pre class="src src-ipython"><span class="org-keyword">import</span> colorcet
+<span class="org-keyword">import</span> matplotlib
+<span class="org-keyword">import</span> matplotlib.pyplot <span class="org-keyword">as</span> plt
+<span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'font.family'</span>] = <span class="org-string">'Nimbus Sans'</span>
 </pre>
 </div>
 </div>
@@ -325,23 +325,23 @@ hg19 to combine with v6p models.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-shell">find /broad/compbio/data/gtex_gwas_hg38_tabix/ -name <span style="color: #00ffff;">"*.bed.gz"</span> &gt;manifest
+<pre class="src src-shell">find /broad/compbio/data/gtex_gwas_hg38_tabix/ -name <span class="org-string">"*.bed.gz"</span> &gt;manifest
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-shell">qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 36 -l <span style="color: #0000ff;">h_vmem</span>=4G
-<span style="color: #00ff00;">set</span> -e
-<span style="color: #00ff00;">function</span> <span style="color: #0000ff;">lift</span> () {
-    <span style="color: #0000ff;">in</span>=gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span> .bed.gz).hg38
-    zcat $<span style="color: #0000ff;">1</span> | awk -vOFS=<span style="color: #00ffff;">'\t'</span> <span style="color: #00ffff;">'NR &gt; 1 {print $1, $2, $3, $4"|"$5"|"$6"|"$7}'</span> &gt;$<span style="color: #0000ff;">in</span>
-    <span style="color: #0000ff;">out</span>=gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span> .bed.gz).hg19
-    liftOver $<span style="color: #0000ff;">in</span> /broad/compbio/data/gtex_eqtl_tabix/hg38ToHg19.over.chain.gz $<span style="color: #0000ff;">out</span> $<span style="color: #0000ff;">out</span>.unmapped
-    sort -k1,1 -k2,2n $<span style="color: #0000ff;">out</span> | tr <span style="color: #00ffff;">'|'</span> <span style="color: #00ffff;">'\t'</span> | bgzip &gt;gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span>)
-    tabix gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span>)
+<pre class="src src-shell">qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 36 -l <span class="org-variable-name">h_vmem</span>=4G
+<span class="org-builtin">set</span> -e
+<span class="org-keyword">function</span> <span class="org-function-name">lift</span> () {
+    <span class="org-variable-name">in</span>=gtex-gwas-hg19/$(<span class="org-sh-quoted-exec">basename</span> $<span class="org-variable-name">1</span> .bed.gz).hg38
+    zcat $<span class="org-variable-name">1</span> | awk -vOFS=<span class="org-string">'\t'</span> <span class="org-string">'NR &gt; 1 {print $1, $2, $3, $4"|"$5"|"$6"|"$7}'</span> &gt;$<span class="org-variable-name">in</span>
+    <span class="org-variable-name">out</span>=gtex-gwas-hg19/$(<span class="org-sh-quoted-exec">basename</span> $<span class="org-variable-name">1</span> .bed.gz).hg19
+    liftOver $<span class="org-variable-name">in</span> /broad/compbio/data/gtex_eqtl_tabix/hg38ToHg19.over.chain.gz $<span class="org-variable-name">out</span> $<span class="org-variable-name">out</span>.unmapped
+    sort -k1,1 -k2,2n $<span class="org-variable-name">out</span> | tr <span class="org-string">'|'</span> <span class="org-string">'\t'</span> | bgzip &gt;gtex-gwas-hg19/$(<span class="org-sh-quoted-exec">basename</span> $<span class="org-variable-name">1</span>)
+    tabix gtex-gwas-hg19/$(<span class="org-sh-quoted-exec">basename</span> $<span class="org-variable-name">1</span>)
 }
-<span style="color: #00ff00;">readarray</span> -O1 tasks &lt;manifest
-lift ${<span style="color: #0000ff;">tasks</span>[$<span style="color: #0000ff;">SGE_TASK_ID</span>]}
+<span class="org-builtin">readarray</span> -O1 tasks &lt;manifest
+lift ${<span class="org-variable-name">tasks</span>[$<span class="org-variable-name">SGE_TASK_ID</span>]}
 </pre>
 </div>
 </div>
@@ -355,7 +355,7 @@ Download ADGC phase 2 (<a href="https://www.niagads.org/datasets/ng00076">https:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-shell">curl -sL <span style="color: #00ffff;">"https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&amp;type=field_collection_item&amp;id=100&amp;force="</span> -o adgc2.txt
+<pre class="src src-shell">curl -sL <span class="org-string">"https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&amp;type=field_collection_item&amp;id=100&amp;force="</span> -o adgc2.txt
 gzip adgc2.txt
 </pre>
 </div>
@@ -365,7 +365,7 @@ The data is on hg37.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-shell">zcat adgc2.txt.gz | awk <span style="color: #00ffff;">'NR == 2 {split($1, a, ":"); print a[2]; exit}'</span> | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+<pre class="src src-shell">zcat adgc2.txt.gz | awk <span class="org-string">'NR == 2 {split($1, a, ":"); print a[2]; exit}'</span> | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
 </pre>
 </div>
 
@@ -379,7 +379,7 @@ Download GWAX (<a href="https://www.nature.com/articles/ng.3766">https://www.nat
 
 <div class="org-src-container">
 <pre class="src src-shell">qsub -terse -cwd -V -j y -sync n
-curl -sOL <span style="color: #00ffff;">"http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"</span>
+curl -sOL <span class="org-string">"http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"</span>
 </pre>
 </div>
 
@@ -397,22 +397,22 @@ Convert \(p\)-values to \(z\)-scores and format the data.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">data</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/AD.gwax.assoc.gz'</span>, sep=<span style="color: #00ffff;">' '</span>)
-<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'chr'</span>] = data[<span style="color: #00ffff;">'CHR'</span>].<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: f<span style="color: #00ffff;">'chr{x}'</span>)
-<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'start'</span>] = data[<span style="color: #00ffff;">'BP'</span>]
-<span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">Important: we removed indels from GTEx</span>
-<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'end'</span>] = data.<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x[<span style="color: #00ffff;">'BP'</span>] <span style="color: #00ff00;">if</span> <span style="color: #00ff00;">len</span>(x[<span style="color: #00ffff;">'A1'</span>]) == <span style="color: #00ff00;">len</span>(x[<span style="color: #00ffff;">'A2'</span>]) == 1 <span style="color: #00ff00;">else</span> np.nan, axis=1).astype(<span style="color: #00ffff;">'Int64'</span>)
-<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'zscore'</span>] = np.sqrt(st.chi2(1).sf(data[<span style="color: #00ffff;">'P'</span>])) * np.sign(np.log(data[<span style="color: #00ffff;">'OR'</span>]))
-<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'pval'</span>] = data[<span style="color: #00ffff;">'P'</span>]
-(data[[<span style="color: #00ffff;">'chr'</span>, <span style="color: #00ffff;">'start'</span>, <span style="color: #00ffff;">'end'</span>, <span style="color: #00ffff;">'A1'</span>, <span style="color: #00ffff;">'A2'</span>, <span style="color: #00ffff;">'zscore'</span>, <span style="color: #00ffff;">'pval'</span>]]
+<pre class="src src-ipython"><span class="org-variable-name">data</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/AD.gwax.assoc.gz'</span>, sep=<span class="org-string">' '</span>)
+<span class="org-variable-name">data</span>[<span class="org-string">'chr'</span>] = data[<span class="org-string">'CHR'</span>].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: f<span class="org-string">'chr{x}'</span>)
+<span class="org-variable-name">data</span>[<span class="org-string">'start'</span>] = data[<span class="org-string">'BP'</span>]
+<span class="org-comment-delimiter"># </span><span class="org-comment">Important: we removed indels from GTEx</span>
+<span class="org-variable-name">data</span>[<span class="org-string">'end'</span>] = data.<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x[<span class="org-string">'BP'</span>] <span class="org-keyword">if</span> <span class="org-builtin">len</span>(x[<span class="org-string">'A1'</span>]) == <span class="org-builtin">len</span>(x[<span class="org-string">'A2'</span>]) == 1 <span class="org-keyword">else</span> np.nan, axis=1).astype(<span class="org-string">'Int64'</span>)
+<span class="org-variable-name">data</span>[<span class="org-string">'zscore'</span>] = np.sqrt(st.chi2(1).sf(data[<span class="org-string">'P'</span>])) * np.sign(np.log(data[<span class="org-string">'OR'</span>]))
+<span class="org-variable-name">data</span>[<span class="org-string">'pval'</span>] = data[<span class="org-string">'P'</span>]
+(data[[<span class="org-string">'chr'</span>, <span class="org-string">'start'</span>, <span class="org-string">'end'</span>, <span class="org-string">'A1'</span>, <span class="org-string">'A2'</span>, <span class="org-string">'zscore'</span>, <span class="org-string">'pval'</span>]]
  .dropna()
- .to_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed'</span>, index=<span style="color: #00ffff;">None</span>, header=<span style="color: #00ffff;">None</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+ .to_csv(<span class="org-string">'/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed'</span>, index=<span class="org-constant">None</span>, header=<span class="org-constant">None</span>, sep=<span class="org-string">'\t'</span>))
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">qsub -cwd -terse -V -sync n -j y -N tabix -S /bin/bash
-<span style="color: #00ff00;">set</span> -e
+<span class="org-builtin">set</span> -e
 bgzip /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed
 tabix /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed.gz
 </pre>
@@ -429,9 +429,9 @@ indexed in the manifest.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-shell">awk <span style="color: #00ffff;">'$6 &gt;= 10'</span> /broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-*-valid.genes.txt &gt;manifest
-qsub -cwd -V -terse -sync n -j y -N plink -t 1-100 -l <span style="color: #0000ff;">h_vmem</span>=2G
-awk -vn=$<span style="color: #0000ff;">SGE_TASK_LAST</span> -vi=$<span style="color: #0000ff;">SGE_TASK_ID</span> <span style="color: #00ffff;">'NR % n == i - 1 {w = 1000000; ub = $4 + w; if ($4 &gt; w) {lb = $4 - w} else {lb = 0} system("plink --memory 2000 --bfile /broad/compbio/data/GTEx/GTEx_restricted/v6_plink/BED_qc/chr"$3" --make-bed --chr "$3" --from-bp "lb" --to-bp "ub" --out "$1)}'</span> manifest
+<pre class="src src-shell">awk <span class="org-string">'$6 &gt;= 10'</span> /broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-*-valid.genes.txt &gt;manifest
+qsub -cwd -V -terse -sync n -j y -N plink -t 1-100 -l <span class="org-variable-name">h_vmem</span>=2G
+awk -vn=$<span class="org-variable-name">SGE_TASK_LAST</span> -vi=$<span class="org-variable-name">SGE_TASK_ID</span> <span class="org-string">'NR % n == i - 1 {w = 1000000; ub = $4 + w; if ($4 &gt; w) {lb = $4 - w} else {lb = 0} system("plink --memory 2000 --bfile /broad/compbio/data/GTEx/GTEx_restricted/v6_plink/BED_qc/chr"$3" --make-bed --chr "$3" --from-bp "lb" --to-bp "ub" --out "$1)}'</span> manifest
 </pre>
 </div>
 </div>
@@ -445,36 +445,36 @@ Extract the fqtl model for <i>APOE</i>
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">gene_id</span> = 49282
-<span style="color: #0000ff;">prefix</span> = f<span style="color: #00ffff;">'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'</span>
-<span style="color: #0000ff;">snp_annot</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.snp.info.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
-<span style="color: #0000ff;">snp_lodds</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.snp.lodds.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
-<span style="color: #0000ff;">tis_annot</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.tis.info.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>, index_col=0)
-<span style="color: #0000ff;">tis_lodds</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.tis.lodds.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
-<span style="color: #0000ff;">keep</span> = (sp.expit(snp_lodds) &gt; .95).<span style="color: #00ff00;">any</span>(axis=0)
-<span style="color: #0000ff;">L</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.snp.theta.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
-<span style="color: #0000ff;">L.index</span> = snp_annot[3]
-<span style="color: #0000ff;">F</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.tis.theta.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
-<span style="color: #0000ff;">F.index</span> = tis_annot[1].<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x[:-9])
-<span style="color: #0000ff;">B</span> = L.loc[:,keep].dot(F.loc[:,keep].T)
+<pre class="src src-ipython"><span class="org-variable-name">gene_id</span> = 49282
+<span class="org-variable-name">prefix</span> = f<span class="org-string">'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'</span>
+<span class="org-variable-name">snp_annot</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.snp.info.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">snp_lodds</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.snp.lodds.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">tis_annot</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.tis.info.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
+<span class="org-variable-name">tis_lodds</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.tis.lodds.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">keep</span> = (sp.expit(snp_lodds) &gt; .95).<span class="org-builtin">any</span>(axis=0)
+<span class="org-variable-name">L</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.snp.theta.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">L.index</span> = snp_annot[3]
+<span class="org-variable-name">F</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.tis.theta.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">F.index</span> = tis_annot[1].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x[:-9])
+<span class="org-variable-name">B</span> = L.loc[:,keep].dot(F.loc[:,keep].T)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">import</span> pyplink
-<span style="color: #00ff00;">with</span> pyplink.PyPlink(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/geno/{gene_id}'</span>) <span style="color: #00ff00;">as</span> f:
-  <span style="color: #0000ff;">fam</span> = f.get_fam()
-  <span style="color: #0000ff;">bim</span> = f.get_bim()
-  <span style="color: #0000ff;">x</span> = np.ma.masked_equal(np.array([row <span style="color: #00ff00;">for</span> _, row <span style="color: #00ff00;">in</span> f.iter_geno()]).T, -1).astype(<span style="color: #00ff00;">float</span>)
-  <span style="color: #0000ff;">x</span> -= x.mean()
-  <span style="color: #0000ff;">x</span> /= x.std()
-  <span style="color: #0000ff;">x</span> = pd.DataFrame(x, index=fam[<span style="color: #00ffff;">'fid'</span>], columns=bim[<span style="color: #00ffff;">'pos'</span>])
+<pre class="src src-ipython"><span class="org-keyword">import</span> pyplink
+<span class="org-keyword">with</span> pyplink.PyPlink(f<span class="org-string">'/broad/hptmp/aksarkar/geno/{gene_id}'</span>) <span class="org-keyword">as</span> f:
+  <span class="org-variable-name">fam</span> = f.get_fam()
+  <span class="org-variable-name">bim</span> = f.get_bim()
+  <span class="org-variable-name">x</span> = np.ma.masked_equal(np.array([row <span class="org-keyword">for</span> _, row <span class="org-keyword">in</span> f.iter_geno()]).T, -1).astype(<span class="org-builtin">float</span>)
+  <span class="org-variable-name">x</span> -= x.mean()
+  <span class="org-variable-name">x</span> /= x.std()
+  <span class="org-variable-name">x</span> = pd.DataFrame(x, index=fam[<span class="org-string">'fid'</span>], columns=bim[<span class="org-string">'pos'</span>])
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">u</span>, <span style="color: #0000ff;">d</span>, <span style="color: #0000ff;">vt</span> = np.linalg.svd(x, full_matrices=<span style="color: #00ffff;">False</span>)
-(d &gt; 1e-4).<span style="color: #00ff00;">sum</span>()
+<pre class="src src-ipython"><span class="org-variable-name">u</span>, <span class="org-variable-name">d</span>, <span class="org-variable-name">vt</span> = np.linalg.svd(x, full_matrices=<span class="org-constant">False</span>)
+(d &gt; 1e-4).<span class="org-builtin">sum</span>()
 </pre>
 </div>
 
@@ -484,12 +484,12 @@ Extract the fqtl model for <i>APOE</i>
 </pre>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">import</span> tabix
-<span style="color: #0000ff;">genes</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/geno/manifest'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>, index_col=0)
-<span style="color: #0000ff;">f</span> = tabix.<span style="color: #00ff00;">open</span>(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz'</span>)
-<span style="color: #0000ff;">row</span> = genes.loc[gene_id]
-<span style="color: #0000ff;">gwas_z</span> = (pd.DataFrame(f.query(f<span style="color: #00ffff;">'chr{row[2]}'</span>, <span style="color: #00ff00;">int</span>(row[3] - 1e6), <span style="color: #00ff00;">int</span>(row[3] + 1e6)))
-          .astype(<span style="color: #00ff00;">dict</span>(<span style="color: #00ff00;">enumerate</span>([<span style="color: #00ff00;">str</span>, <span style="color: #00ff00;">int</span>, <span style="color: #00ff00;">int</span>, <span style="color: #00ff00;">str</span>, <span style="color: #00ff00;">str</span>, <span style="color: #00ff00;">float</span>, <span style="color: #00ff00;">float</span>]))))
+<pre class="src src-ipython"><span class="org-keyword">import</span> tabix
+<span class="org-variable-name">genes</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/geno/manifest'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
+<span class="org-variable-name">f</span> = tabix.<span class="org-builtin">open</span>(<span class="org-string">'/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz'</span>)
+<span class="org-variable-name">row</span> = genes.loc[gene_id]
+<span class="org-variable-name">gwas_z</span> = (pd.DataFrame(f.query(f<span class="org-string">'chr{row[2]}'</span>, <span class="org-builtin">int</span>(row[3] - 1e6), <span class="org-builtin">int</span>(row[3] + 1e6)))
+          .astype(<span class="org-builtin">dict</span>(<span class="org-builtin">enumerate</span>([<span class="org-builtin">str</span>, <span class="org-builtin">int</span>, <span class="org-builtin">int</span>, <span class="org-builtin">str</span>, <span class="org-builtin">str</span>, <span class="org-builtin">float</span>, <span class="org-builtin">float</span>]))))
 gwas_z.head()
 </pre>
 </div>
@@ -504,7 +504,7 @@ gwas_z.head()
 </pre>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">twas_data</span> = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index(<span style="color: #00ffff;">'2_x'</span>)
+<pre class="src src-ipython"><span class="org-variable-name">twas_data</span> = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index(<span class="org-string">'2_x'</span>)
 twas_data.head(n=1)
 </pre>
 </div>
@@ -520,25 +520,25 @@ twas_data.head(n=1)
 </pre>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">Bs</span> = B.loc[twas_data[<span style="color: #00ffff;">'3_y'</span>]]
-<span style="color: #0000ff;">Bs</span> = Bs.loc[~Bs.index.duplicated(keep=<span style="color: #00ffff;">'first'</span>)]
-<span style="color: #0000ff;">z</span> = twas_data[<span style="color: #00ffff;">'5_x'</span>]
-<span style="color: #0000ff;">z</span> = z.loc[~z.index.duplicated(keep=<span style="color: #00ffff;">'first'</span>)]
-<span style="color: #0000ff;">X</span> = x.loc[:,twas_data[<span style="color: #00ffff;">'3_y'</span>]]
-<span style="color: #0000ff;">X</span> = X.loc[:,~X.columns.duplicated(keep=<span style="color: #00ffff;">'first'</span>)]
-<span style="color: #0000ff;">R</span> = X.T.dot(X) / x.shape[0]
+<pre class="src src-ipython"><span class="org-variable-name">Bs</span> = B.loc[twas_data[<span class="org-string">'3_y'</span>]]
+<span class="org-variable-name">Bs</span> = Bs.loc[~Bs.index.duplicated(keep=<span class="org-string">'first'</span>)]
+<span class="org-variable-name">z</span> = twas_data[<span class="org-string">'5_x'</span>]
+<span class="org-variable-name">z</span> = z.loc[~z.index.duplicated(keep=<span class="org-string">'first'</span>)]
+<span class="org-variable-name">X</span> = x.loc[:,twas_data[<span class="org-string">'3_y'</span>]]
+<span class="org-variable-name">X</span> = X.loc[:,~X.columns.duplicated(keep=<span class="org-string">'first'</span>)]
+<span class="org-variable-name">R</span> = X.T.dot(X) / x.shape[0]
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">mkdir -p tasks
-awk <span style="color: #00ffff;">'{print &gt;"/broad/hptmp/aksarkar/tasks/chunk-" int(NR / 1000) ".txt"}'</span> geno/manifest
+awk <span class="org-string">'{print &gt;"/broad/hptmp/aksarkar/tasks/chunk-" int(NR / 1000) ".txt"}'</span> geno/manifest
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N test -l <span style="color: #0000ff;">h_vmem</span>=1G,<span style="color: #0000ff;">h_rt</span>=0:30:00
-<span style="color: #00ff00;">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N test -l <span class="org-variable-name">h_vmem</span>=1G,<span class="org-variable-name">h_rt</span>=0:30:00
+<span class="org-builtin">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
 python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
 </pre>
 </div>
@@ -549,15 +549,15 @@ python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/
 <h3 id="org7afd361">Run TWAS</h3>
 <div class="outline-text-3" id="text-org7afd361">
 <div class="org-src-container">
-<pre class="src src-shell">find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name <span style="color: #00ffff;">"*.bed.gz"</span> | parallel --dry-run <span style="color: #00ffff;">'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}'</span> &gt;/broad/hptmp/aksarkar/twas/joblist
+<pre class="src src-shell">find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name <span class="org-string">"*.bed.gz"</span> | parallel --dry-run <span class="org-string">'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}'</span> &gt;/broad/hptmp/aksarkar/twas/joblist
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span style="color: #0000ff;">h_vmem</span>=4G,<span style="color: #0000ff;">h_rt</span>=12:00:00 -t 1-2
-<span style="color: #00ff00;">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/twas/joblist
-<span style="color: #00ff00;">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
-<span style="color: #00ff00;">exec</span> ${<span style="color: #0000ff;">tasks</span>[$<span style="color: #0000ff;">SGE_TASK_ID</span>]}
+<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span class="org-variable-name">h_vmem</span>=4G,<span class="org-variable-name">h_rt</span>=12:00:00 -t 1-2
+<span class="org-builtin">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/twas/joblist
+<span class="org-builtin">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+<span class="org-keyword">exec</span> ${<span class="org-variable-name">tasks</span>[$<span class="org-variable-name">SGE_TASK_ID</span>]}
 </pre>
 </div>
 </div>
@@ -566,7 +566,7 @@ python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="date">Created: 2020-04-04 Sat 13:26</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

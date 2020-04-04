@@ -1,4 +1,5 @@
-((org-mode . ((org-publish-project-alist .
+((org-mode . ((org-html-htmlize-output-type . "css")
+              (org-publish-project-alist .
                                          (("fqtl-org" . (:base-directory "/broad/compbio/aksarkar/projects/gtex-fqtl/org"
                                                                          :publishing-directory "/broad/compbio/aksarkar/projects/gtex-fqtl/docs"
                                                                          :publishing-function org-html-publish-to-html
@@ -11,4 +12,5 @@
                                                                          :base-extension "png"
                                                                          :recursive t
                                                                          ))
-                                          ("fqtl" . (:components ("fqtl-org" "fqtl-fig"))))))))
+                                          ("fqtl" . (:components ("fqtl-org" "fqtl-fig")))))
+              )))

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 13:10 -->
+<!-- 2020-04-04 Sat 13:26 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tissue-specific TWAS analysis</title>
@@ -288,28 +288,28 @@ based on <code>fqtl</code> models.
 <h2 id="orgf0fa823">Setup</h2>
 <div class="outline-text-2" id="text-orgf0fa823">
 <div class="org-src-container">
-<pre class="src src-ipython" id="org5974704"><span style="color: #00ff00;">import</span> glob
-<span style="color: #00ff00;">import</span> itertools <span style="color: #00ff00;">as</span> it
-<span style="color: #00ff00;">import</span> os.path
-<span style="color: #00ff00;">import</span> numpy <span style="color: #00ff00;">as</span> np
-<span style="color: #00ff00;">import</span> pandas <span style="color: #00ff00;">as</span> pd
-<span style="color: #00ff00;">import</span> scipy.linalg <span style="color: #00ff00;">as</span> sl
-<span style="color: #00ff00;">import</span> scipy.special <span style="color: #00ff00;">as</span> sp
-<span style="color: #00ff00;">import</span> scipy.stats <span style="color: #00ff00;">as</span> st
+<pre class="src src-ipython" id="org5974704"><span class="org-keyword">import</span> glob
+<span class="org-keyword">import</span> itertools <span class="org-keyword">as</span> it
+<span class="org-keyword">import</span> os.path
+<span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
+<span class="org-keyword">import</span> pandas <span class="org-keyword">as</span> pd
+<span class="org-keyword">import</span> scipy.linalg <span class="org-keyword">as</span> sl
+<span class="org-keyword">import</span> scipy.special <span class="org-keyword">as</span> sp
+<span class="org-keyword">import</span> scipy.stats <span class="org-keyword">as</span> st
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">%matplotlib inline
-%config <span style="color: #0000ff;">InlineBackend.figure_formats</span> = <span style="color: #00ff00;">set</span>([<span style="color: #00ffff;">'retina'</span>])
+%config <span class="org-variable-name">InlineBackend.figure_formats</span> = <span class="org-builtin">set</span>([<span class="org-string">'retina'</span>])
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">import</span> colorcet
-<span style="color: #00ff00;">import</span> matplotlib
-<span style="color: #00ff00;">import</span> matplotlib.pyplot <span style="color: #00ff00;">as</span> plt
-<span style="color: #0000ff;">plt.rcParams</span>[<span style="color: #00ffff;">'font.family'</span>] = <span style="color: #00ffff;">'Nimbus Sans'</span>
+<pre class="src src-ipython"><span class="org-keyword">import</span> colorcet
+<span class="org-keyword">import</span> matplotlib
+<span class="org-keyword">import</span> matplotlib.pyplot <span class="org-keyword">as</span> plt
+<span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'font.family'</span>] = <span class="org-string">'Nimbus Sans'</span>
 </pre>
 </div>
 </div>
@@ -328,20 +328,20 @@ For each trait, assign each gene/mechanism to the best LD block.
 
 <div class="org-src-container">
 <pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
-<span style="color: #00ff00;">import</span> os
-<span style="color: #0000ff;">i</span> = os.environ[<span style="color: #00ffff;">'SLURM_ARRAY_TASK_ID'</span>]
-(pd.read_csv(f<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/docs/share/twas/chr{i}.twas.bed.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
- .groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>])
- .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[np.<span style="color: #00ff00;">abs</span>(x[<span style="color: #00ffff;">'z'</span>]).idxmax])
- .reset_index(drop=<span style="color: #00ffff;">True</span>)
- .to_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>))
+<span class="org-keyword">import</span> os
+<span class="org-variable-name">i</span> = os.environ[<span class="org-string">'SLURM_ARRAY_TASK_ID'</span>]
+(pd.read_csv(f<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/docs/share/twas/chr{i}.twas.bed.gz'</span>, sep=<span class="org-string">'\t'</span>)
+ .groupby([<span class="org-string">'trait'</span>, <span class="org-string">'ensg'</span>, <span class="org-string">'factor'</span>])
+ .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.loc[np.<span class="org-builtin">abs</span>(x[<span class="org-string">'z'</span>]).idxmax])
+ .reset_index(drop=<span class="org-constant">True</span>)
+ .to_csv(f<span class="org-string">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>, index=<span class="org-constant">None</span>))
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">sbatch --partition=broadwl --mem=8G --time=40:00 --job-name=assign-twas -a 1
-<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
-<span style="color: #00ff00;">source</span> activate fqtl
+<span class="org-comment-delimiter">#</span><span class="org-comment">!/bin/bash</span>
+<span class="org-builtin">source</span> activate fqtl
 module load htslib
 module load plink
 python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/assign-twas.py
@@ -354,23 +354,23 @@ Extract the significant hits.
 
 <div class="org-src-container">
 <pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
-<span style="color: #00ff00;">def</span> <span style="color: #0000ff;">bh</span>(chunk, key, alpha=0.05):
-  <span style="color: #0000ff;">N</span> = chunk.shape[0]
-  <span style="color: #0000ff;">temp</span> = chunk.sort_values(key)
-  <span style="color: #0000ff;">keep</span> = temp[key] &lt; alpha * np.arange(1, N + 1) / N
-  <span style="color: #00ff00;">return</span> temp[keep]
-<span style="color: #0000ff;">twas_sig</span> = (pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
-            .groupby([<span style="color: #00ffff;">'trait'</span>])
-            .<span style="color: #00ff00;">apply</span>(bh, key=<span style="color: #00ffff;">'p.val'</span>)
-            .reset_index(drop=<span style="color: #00ffff;">True</span>))
-twas_sig.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+<span class="org-keyword">def</span> <span class="org-function-name">bh</span>(chunk, key, alpha=0.05):
+  <span class="org-variable-name">N</span> = chunk.shape[0]
+  <span class="org-variable-name">temp</span> = chunk.sort_values(key)
+  <span class="org-variable-name">keep</span> = temp[key] &lt; alpha * np.arange(1, N + 1) / N
+  <span class="org-keyword">return</span> temp[keep]
+<span class="org-variable-name">twas_sig</span> = (pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(1, 23)])
+            .groupby([<span class="org-string">'trait'</span>])
+            .<span class="org-builtin">apply</span>(bh, key=<span class="org-string">'p.val'</span>)
+            .reset_index(drop=<span class="org-constant">True</span>))
+twas_sig.to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">sbatch --partition=broadwl --mem=32G --time=10:00 --job-name=extract-twas
-<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
-<span style="color: #00ff00;">source</span> activate fqtl
+<span class="org-comment-delimiter">#</span><span class="org-comment">!/bin/bash</span>
+<span class="org-builtin">source</span> activate fqtl
 module load htslib
 module load plink
 python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas.py
@@ -382,7 +382,7 @@ Read the significant hits.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython" id="org771317d"><span style="color: #0000ff;">twas_sig</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+<pre class="src src-ipython" id="org771317d"><span class="org-variable-name">twas_sig</span> = pd.read_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
 </pre>
 </div>
 </div>
@@ -396,19 +396,19 @@ Reorder matrix columns to get similar columns next to each other.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">def</span> <span style="color: #0000ff;">newick</span>(children, root, N):
-  <span style="color: #00ff00;">if</span> root &lt; N:
-    <span style="color: #00ff00;">return</span> [root]
-  <span style="color: #00ff00;">else</span>:
-    <span style="color: #0000ff;">left</span>, <span style="color: #0000ff;">right</span> = children[root - N]
-    <span style="color: #0000ff;">res</span> = newick(children, left, N)
+<pre class="src src-ipython"><span class="org-keyword">def</span> <span class="org-function-name">newick</span>(children, root, N):
+  <span class="org-keyword">if</span> root &lt; N:
+    <span class="org-keyword">return</span> [root]
+  <span class="org-keyword">else</span>:
+    <span class="org-variable-name">left</span>, <span class="org-variable-name">right</span> = children[root - N]
+    <span class="org-variable-name">res</span> = newick(children, left, N)
     res.extend(newick(children, right, N))
-    <span style="color: #00ff00;">return</span> res
+    <span class="org-keyword">return</span> res
 
-<span style="color: #00ff00;">def</span> <span style="color: #0000ff;">order</span>(L):
-  <span style="color: #0000ff;">N</span> = L.shape[0]
-  <span style="color: #0000ff;">m0</span> = sklearn.cluster.AgglomerativeClustering(compute_full_tree=<span style="color: #00ffff;">True</span>).fit(L)
-  <span style="color: #00ff00;">return</span> newick(m0.children_, 2 * (N - 1), N)
+<span class="org-keyword">def</span> <span class="org-function-name">order</span>(L):
+  <span class="org-variable-name">N</span> = L.shape[0]
+  <span class="org-variable-name">m0</span> = sklearn.cluster.AgglomerativeClustering(compute_full_tree=<span class="org-constant">True</span>).fit(L)
+  <span class="org-keyword">return</span> newick(m0.children_, 2 * (N - 1), N)
 </pre>
 </div>
 </div>
@@ -422,7 +422,7 @@ Count the total number of trait-gene associations.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython">twas_sig.groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>]).first().shape[0]
+<pre class="src src-ipython">twas_sig.groupby([<span class="org-string">'trait'</span>, <span class="org-string">'ensg'</span>]).first().shape[0]
 </pre>
 </div>
 
@@ -436,12 +436,12 @@ Plot the distribution of associations per trait.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">genes_per_trait</span> = twas_sig.groupby(<span style="color: #00ffff;">'trait'</span>)[<span style="color: #00ffff;">'ensg'</span>].agg(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(x))).reset_index()
+<pre class="src src-ipython"><span class="org-variable-name">genes_per_trait</span> = twas_sig.groupby(<span class="org-string">'trait'</span>)[<span class="org-string">'ensg'</span>].agg(<span class="org-keyword">lambda</span> x: <span class="org-builtin">len</span>(<span class="org-builtin">set</span>(x))).reset_index()
 plt.clf()
 plt.gcf().set_size_inches(3, 3)
-plt.hist(genes_per_trait[<span style="color: #00ffff;">'ensg'</span>], bins=20, color=<span style="color: #00ffff;">'k'</span>, density=<span style="color: #00ffff;">True</span>)
-plt.xlabel(<span style="color: #00ffff;">'Number of associated genes'</span>)
-plt.ylabel(<span style="color: #00ffff;">'Density'</span>)
+plt.hist(genes_per_trait[<span class="org-string">'ensg'</span>], bins=20, color=<span class="org-string">'k'</span>, density=<span class="org-constant">True</span>)
+plt.xlabel(<span class="org-string">'Number of associated genes'</span>)
+plt.ylabel(<span class="org-string">'Density'</span>)
 </pre>
 </div>
 
@@ -460,7 +460,7 @@ Count the number of gene associations with more than one mechanism.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython">twas_sig.groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>])[<span style="color: #00ffff;">'factor'</span>].<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(x)) &gt; 1).<span style="color: #00ff00;">sum</span>()
+<pre class="src src-ipython">twas_sig.groupby([<span class="org-string">'trait'</span>, <span class="org-string">'ensg'</span>])[<span class="org-string">'factor'</span>].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: <span class="org-builtin">len</span>(<span class="org-builtin">set</span>(x)) &gt; 1).<span class="org-builtin">sum</span>()
 </pre>
 </div>
 
@@ -474,16 +474,16 @@ Plot the distribution of number of gene-factor associations across traits.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">gene_factor_assoc</span> = twas_sig.groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>])[<span style="color: #00ffff;">'factor'</span>].agg(<span style="color: #00ff00;">len</span>).reset_index()
+<pre class="src src-ipython"><span class="org-variable-name">gene_factor_assoc</span> = twas_sig.groupby([<span class="org-string">'trait'</span>, <span class="org-string">'ensg'</span>])[<span class="org-string">'factor'</span>].agg(<span class="org-builtin">len</span>).reset_index()
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
 plt.gcf().set_size_inches(3, 3)
-plt.hist(gene_factor_assoc[<span style="color: #00ffff;">'factor'</span>], bins=gene_factor_assoc[<span style="color: #00ffff;">'factor'</span>].<span style="color: #00ff00;">max</span>() - 1, color=<span style="color: #00ffff;">'k'</span>, density=<span style="color: #00ffff;">True</span>)
-plt.xlabel(<span style="color: #00ffff;">'Number of associated mechanisms'</span>)
-plt.ylabel(<span style="color: #00ffff;">'Density'</span>)
+plt.hist(gene_factor_assoc[<span class="org-string">'factor'</span>], bins=gene_factor_assoc[<span class="org-string">'factor'</span>].<span class="org-builtin">max</span>() - 1, color=<span class="org-string">'k'</span>, density=<span class="org-constant">True</span>)
+plt.xlabel(<span class="org-string">'Number of associated mechanisms'</span>)
+plt.ylabel(<span class="org-string">'Density'</span>)
 </pre>
 </div>
 
@@ -503,18 +503,18 @@ multiple factors were associated.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">between_ld</span> = (gene_factor_assoc
+<pre class="src src-ipython"><span class="org-variable-name">between_ld</span> = (gene_factor_assoc
               .reset_index()
-              .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: ld_distribution.loc[x[<span style="color: #00ffff;">'ensg'</span>], <span style="color: #00ffff;">'between'</span>].<span style="color: #00ff00;">max</span>() <span style="color: #00ff00;">if</span> x[<span style="color: #00ffff;">'ensg'</span>] <span style="color: #00ff00;">in</span> ld_distribution.index <span style="color: #00ff00;">and</span> x[<span style="color: #00ffff;">'factor'</span>] &gt; 1 <span style="color: #00ff00;">else</span> 0, axis=1))
+              .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: ld_distribution.loc[x[<span class="org-string">'ensg'</span>], <span class="org-string">'between'</span>].<span class="org-builtin">max</span>() <span class="org-keyword">if</span> x[<span class="org-string">'ensg'</span>] <span class="org-keyword">in</span> ld_distribution.index <span class="org-keyword">and</span> x[<span class="org-string">'factor'</span>] &gt; 1 <span class="org-keyword">else</span> 0, axis=1))
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
 plt.gcf().set_size_inches(3, 3)
-plt.hist(between_ld, bins=10, color=<span style="color: #00ffff;">'k'</span>, density=<span style="color: #00ffff;">True</span>)
-plt.xlabel(<span style="color: #00ffff;">'Between mechanism LD $r^2$'</span>)
-plt.ylabel(<span style="color: #00ffff;">'Density'</span>)
+plt.hist(between_ld, bins=10, color=<span class="org-string">'k'</span>, density=<span class="org-constant">True</span>)
+plt.xlabel(<span class="org-string">'Between mechanism LD $r^2$'</span>)
+plt.ylabel(<span class="org-string">'Density'</span>)
 </pre>
 </div>
 
@@ -533,7 +533,7 @@ Count the proportion of genes with independent mechanisms (\(r^2 < 0.1\)).
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython">(between_ld &lt; 0.1).<span style="color: #00ff00;">sum</span>() / between_ld.shape[0]
+<pre class="src src-ipython">(between_ld &lt; 0.1).<span class="org-builtin">sum</span>() / between_ld.shape[0]
 </pre>
 </div>
 
@@ -553,12 +553,12 @@ posterior probability on whole blood.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">blood_twas_sig</span> = (fqtl_tis
+<pre class="src src-ipython"><span class="org-variable-name">blood_twas_sig</span> = (fqtl_tis
  .merge(keep_gene_factors)
- .query(<span style="color: #00ffff;">'tis == "Whole_Blood"'</span>)
- .query(<span style="color: #00ffff;">'lodds &gt; 2.94'</span>)
- [[<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'ld'</span>]]
- .merge(twas_sig, left_on=[<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'ld'</span>], right_on=[<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'ld.idx'</span>]))
+ .query(<span class="org-string">'tis == "Whole_Blood"'</span>)
+ .query(<span class="org-string">'lodds &gt; 2.94'</span>)
+ [[<span class="org-string">'ensg'</span>, <span class="org-string">'factor'</span>, <span class="org-string">'ld'</span>]]
+ .merge(twas_sig, left_on=[<span class="org-string">'ensg'</span>, <span class="org-string">'factor'</span>, <span class="org-string">'ld'</span>], right_on=[<span class="org-string">'ensg'</span>, <span class="org-string">'factor'</span>, <span class="org-string">'ld.idx'</span>]))
 </pre>
 </div>
 
@@ -577,7 +577,7 @@ Look at the traits with blood TWAS genes.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(blood_twas_sig[<span style="color: #00ffff;">'trait'</span>]))
+<pre class="src src-ipython"><span class="org-builtin">len</span>(<span class="org-builtin">set</span>(blood_twas_sig[<span class="org-string">'trait'</span>]))
 </pre>
 </div>
 
@@ -592,34 +592,34 @@ Look at the traits with blood TWAS genes.
 <h3 id="org6ecaf1b">GOM of TWAS</h3>
 <div class="outline-text-3" id="text-org6ecaf1b">
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">B</span> = (~np.isnan(twas_sig.pivot_table(index=<span style="color: #00ffff;">'trait'</span>, columns=<span style="color: #00ffff;">'ensg'</span>, values=<span style="color: #00ffff;">'z'</span>))).astype(<span style="color: #00ff00;">int</span>)
+<pre class="src src-ipython"><span class="org-variable-name">B</span> = (~np.isnan(twas_sig.pivot_table(index=<span class="org-string">'trait'</span>, columns=<span class="org-string">'ensg'</span>, values=<span class="org-string">'z'</span>))).astype(<span class="org-builtin">int</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">obj</span> = np.inf
-<span style="color: #0000ff;">opt</span> = <span style="color: #00ffff;">None</span>
-<span style="color: #00ff00;">for</span> trial <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(10):
-  <span style="color: #0000ff;">m</span> = skd.NMF(n_components=15, beta_loss=1, solver=<span style="color: #00ffff;">'mu'</span>, init=<span style="color: #00ffff;">'random'</span>, l1_ratio=1, alpha=1).fit(B)
-  <span style="color: #00ff00;">if</span> m.reconstruction_err_ &lt; obj:
-    <span style="color: #0000ff;">opt</span> = m
-    <span style="color: #0000ff;">obj</span> = m.reconstruction_err_
-<span style="color: #0000ff;">L</span> = opt.transform(B)
-<span style="color: #0000ff;">F</span> = opt.components_
-<span style="color: #0000ff;">L</span> *= F.<span style="color: #00ff00;">sum</span>(axis=1)
-<span style="color: #0000ff;">L</span> /= L.<span style="color: #00ff00;">sum</span>(axis=1, keepdims=<span style="color: #00ffff;">True</span>)
-<span style="color: #0000ff;">F</span> /= F.<span style="color: #00ff00;">sum</span>(axis=1, keepdims=<span style="color: #00ffff;">True</span>)
+<pre class="src src-ipython"><span class="org-variable-name">obj</span> = np.inf
+<span class="org-variable-name">opt</span> = <span class="org-constant">None</span>
+<span class="org-keyword">for</span> trial <span class="org-keyword">in</span> <span class="org-builtin">range</span>(10):
+  <span class="org-variable-name">m</span> = skd.NMF(n_components=15, beta_loss=1, solver=<span class="org-string">'mu'</span>, init=<span class="org-string">'random'</span>, l1_ratio=1, alpha=1).fit(B)
+  <span class="org-keyword">if</span> m.reconstruction_err_ &lt; obj:
+    <span class="org-variable-name">opt</span> = m
+    <span class="org-variable-name">obj</span> = m.reconstruction_err_
+<span class="org-variable-name">L</span> = opt.transform(B)
+<span class="org-variable-name">F</span> = opt.components_
+<span class="org-variable-name">L</span> *= F.<span class="org-builtin">sum</span>(axis=1)
+<span class="org-variable-name">L</span> /= L.<span class="org-builtin">sum</span>(axis=1, keepdims=<span class="org-constant">True</span>)
+<span class="org-variable-name">F</span> /= F.<span class="org-builtin">sum</span>(axis=1, keepdims=<span class="org-constant">True</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
 plt.gcf().set_size_inches(7, 5)
-<span style="color: #0000ff;">W</span> = L.T[:,order(L)]
-plt.imshow(W[np.argsort(W.argmax(axis=1))], cmap=colorcet.cm[<span style="color: #00ffff;">'blues'</span>], vmin=0, vmax=1)
-plt.xlabel(<span style="color: #00ffff;">'Traits'</span>)
+<span class="org-variable-name">W</span> = L.T[:,order(L)]
+plt.imshow(W[np.argsort(W.argmax(axis=1))], cmap=colorcet.cm[<span class="org-string">'blues'</span>], vmin=0, vmax=1)
+plt.xlabel(<span class="org-string">'Traits'</span>)
 plt.xticks([])
-plt.ylabel(<span style="color: #00ffff;">'Modules'</span>)
+plt.ylabel(<span class="org-string">'Modules'</span>)
 plt.yticks([])
 </pre>
 </div>
@@ -639,8 +639,8 @@ Report the trait modules.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython">(pd.concat({i: pd.DataFrame.from_dict({<span style="color: #00ffff;">'trait'</span>: B.index[L[:,i] &gt; .5], <span style="color: #00ffff;">'loading'</span>: L[:,i][L[:,i] &gt; .5]}) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(L.shape[1])})
- .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/nmf.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+<pre class="src src-ipython">(pd.concat({i: pd.DataFrame.from_dict({<span class="org-string">'trait'</span>: B.index[L[:,i] &gt; .5], <span class="org-string">'loading'</span>: L[:,i][L[:,i] &gt; .5]}) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(L.shape[1])})
+ .to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/nmf.txt.gz'</span>, sep=<span class="org-string">'\t'</span>))
 </pre>
 </div>
 
@@ -649,20 +649,20 @@ Report the gene modules.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #00ff00;">def</span> <span style="color: #0000ff;">top_genes</span>(topics, num_genes=100):
-  <span style="color: #0000ff;">res</span> = {}
-  <span style="color: #00ff00;">for</span> k, t <span style="color: #00ff00;">in</span> topics.iteritems():
-    <span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">Dey et al. Eq. 3-4 https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1006599</span>
-    <span style="color: #0000ff;">kl</span> = t.values.reshape(-1, 1) * np.log((t.values.reshape(-1, 1) + 1e-8) / (topics.values + 1e-8)) + topics.values - t.values.reshape(-1, 1)
-    <span style="color: #0000ff;">kl</span> = np.delete(kl, k, axis=1)
-    <span style="color: #0000ff;">res</span>[k] = pd.DataFrame(kl, index=B.columns).<span style="color: #00ff00;">min</span>(axis=1).sort_values(ascending=<span style="color: #00ffff;">False</span>).head(n=num_genes)
-  <span style="color: #00ff00;">return</span> pd.concat(res).reset_index()
+<pre class="src src-ipython"><span class="org-keyword">def</span> <span class="org-function-name">top_genes</span>(topics, num_genes=100):
+  <span class="org-variable-name">res</span> = {}
+  <span class="org-keyword">for</span> k, t <span class="org-keyword">in</span> topics.iteritems():
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Dey et al. Eq. 3-4 https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1006599</span>
+    <span class="org-variable-name">kl</span> = t.values.reshape(-1, 1) * np.log((t.values.reshape(-1, 1) + 1e-8) / (topics.values + 1e-8)) + topics.values - t.values.reshape(-1, 1)
+    <span class="org-variable-name">kl</span> = np.delete(kl, k, axis=1)
+    <span class="org-variable-name">res</span>[k] = pd.DataFrame(kl, index=B.columns).<span class="org-builtin">min</span>(axis=1).sort_values(ascending=<span class="org-constant">False</span>).head(n=num_genes)
+  <span class="org-keyword">return</span> pd.concat(res).reset_index()
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">res</span> = top_genes(pd.DataFrame(F.T, index=B.columns), num_genes=100)
-res.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>)
+<pre class="src src-ipython"><span class="org-variable-name">res</span> = top_genes(pd.DataFrame(F.T, index=B.columns), num_genes=100)
+res.to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>, index=<span class="org-constant">None</span>)
 </pre>
 </div>
 
@@ -671,13 +671,13 @@ Compute pathway enrichments for the gene modules using PANTHER.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-bash"><span style="color: #00ff00;">function</span> <span style="color: #0000ff;">z</span> {
-    zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz | <span style="color: #00ffff;">\</span>
-        awk -vm=$<span style="color: #0000ff;">1</span> <span style="color: #00ffff;">'$1 == m {print $2}'</span> | <span style="color: #00ffff;">\</span>
-        curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F <span style="color: #0000ff;">organism</span>=<span style="color: #00ffff;">"Homo sapiens"</span> -F <span style="color: #0000ff;">geneList</span>=@- -F <span style="color: #0000ff;">enrichmentType</span>=fullGO_process -F <span style="color: #0000ff;">type</span>=enrichment -F <span style="color: #0000ff;">correction</span>=FDR &gt;/broad/hptmp/aksarkar/fqtl/twas/panther-topic-$<span style="color: #0000ff;">1</span>.txt
+<pre class="src src-bash"><span class="org-keyword">function</span> <span class="org-function-name">z</span> {
+    zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz | <span class="org-sh-escaped-newline">\</span>
+        awk -vm=$<span class="org-variable-name">1</span> <span class="org-string">'$1 == m {print $2}'</span> | <span class="org-sh-escaped-newline">\</span>
+        curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F <span class="org-variable-name">organism</span>=<span class="org-string">"Homo sapiens"</span> -F <span class="org-variable-name">geneList</span>=@- -F <span class="org-variable-name">enrichmentType</span>=fullGO_process -F <span class="org-variable-name">type</span>=enrichment -F <span class="org-variable-name">correction</span>=FDR &gt;/broad/hptmp/aksarkar/fqtl/twas/panther-topic-$<span class="org-variable-name">1</span>.txt
 }
-<span style="color: #00ff00;">export</span> -f z
-parallel -j5 z ::: $(<span style="color: #ff00ff;">seq</span> 0 14)
+<span class="org-builtin">export</span> -f z
+parallel -j5 z ::: $(<span class="org-sh-quoted-exec">seq</span> 0 14)
 </pre>
 </div>
 
@@ -686,23 +686,23 @@ Read the pathway enrichments.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">panther_results</span> = (pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/panther-topic-{i}.txt'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=<span style="color: #00ffff;">None</span>)
-                             <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(topics.shape[1])], keys=<span style="color: #00ff00;">range</span>(topics.shape[1]))
+<pre class="src src-ipython"><span class="org-variable-name">panther_results</span> = (pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/fqtl/twas/panther-topic-{i}.txt'</span>, sep=<span class="org-string">'\t'</span>, index_col=<span class="org-constant">None</span>)
+                             <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(topics.shape[1])], keys=<span class="org-builtin">range</span>(topics.shape[1]))
                    .reset_index(level=0))
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython">panther_results.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>)
+<pre class="src src-ipython">panther_results.to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index=<span class="org-constant">None</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython">(panther_results[panther_results[<span style="color: #00ffff;">'FDR'</span>] &lt; 0.05]
- .groupby(<span style="color: #00ffff;">'level_0'</span>)
- .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: pd.Series(<span style="color: #00ff00;">list</span>(<span style="color: #00ff00;">set</span>(x[<span style="color: #00ffff;">'Name'</span>]))))
- .reset_index(level=1, drop=<span style="color: #00ffff;">True</span>)
- .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways-fdr-05.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">True</span>))
+<pre class="src src-ipython">(panther_results[panther_results[<span class="org-string">'FDR'</span>] &lt; 0.05]
+ .groupby(<span class="org-string">'level_0'</span>)
+ .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: pd.Series(<span class="org-builtin">list</span>(<span class="org-builtin">set</span>(x[<span class="org-string">'Name'</span>]))))
+ .reset_index(level=1, drop=<span class="org-constant">True</span>)
+ .to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways-fdr-05.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">True</span>))
 </pre>
 </div>
 </div>
@@ -720,20 +720,20 @@ LD blocks.
 <div class="org-src-container">
 <pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
 &lt;&lt;read-twas-sig&gt;&gt;
-<span style="color: #0000ff;">twas</span> = pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
-<span style="color: #0000ff;">Z</span> = (twas[twas[<span style="color: #00ffff;">'ensg'</span>].isin(<span style="color: #00ff00;">set</span>(twas_sig[<span style="color: #00ffff;">'ensg'</span>]))]
-     .groupby([<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'trait'</span>])
-     .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[np.<span style="color: #00ff00;">abs</span>(x[<span style="color: #00ffff;">'z'</span>]).idxmax])[<span style="color: #00ffff;">'z'</span>]
+<span class="org-variable-name">twas</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(1, 23)])
+<span class="org-variable-name">Z</span> = (twas[twas[<span class="org-string">'ensg'</span>].isin(<span class="org-builtin">set</span>(twas_sig[<span class="org-string">'ensg'</span>]))]
+     .groupby([<span class="org-string">'ensg'</span>, <span class="org-string">'trait'</span>])
+     .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.loc[np.<span class="org-builtin">abs</span>(x[<span class="org-string">'z'</span>]).idxmax])[<span class="org-string">'z'</span>]
      .reset_index()
-     .pivot_table(index=<span style="color: #00ffff;">'ensg'</span>, columns=<span style="color: #00ffff;">'trait'</span>, values=<span style="color: #00ffff;">'z'</span>))
-Z.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+     .pivot_table(index=<span class="org-string">'ensg'</span>, columns=<span class="org-string">'trait'</span>, values=<span class="org-string">'z'</span>))
+Z.to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">sbatch --partition=broadwl --mem=16G --job-name=extract-twas-z
-<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
-<span style="color: #00ff00;">source</span> activate fqtl
+<span class="org-comment-delimiter">#</span><span class="org-comment">!/bin/bash</span>
+<span class="org-builtin">source</span> activate fqtl
 python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas-z.py
 </pre>
 </div>
@@ -745,18 +745,18 @@ Fit <code>flash</code>.
 <div class="org-src-container">
 <pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
 &lt;&lt;r-imports&gt;&gt;
-<span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
-<span style="color: #0000ff;">data</span> = flashr.flash_set_data(Z.values)
-<span style="color: #0000ff;">fit</span> = flashr.flash(data, var_type=<span style="color: #00ffff;">'constant'</span>, backfit=<span style="color: #00ffff;">True</span>)
-<span style="color: #00ff00;">with</span> <span style="color: #00ff00;">open</span>(<span style="color: #00ffff;">'flash-result.pkl'</span>, <span style="color: #00ffff;">'wb'</span>) <span style="color: #00ff00;">as</span> f:
+<span class="org-variable-name">Z</span> = pd.read_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
+<span class="org-variable-name">data</span> = flashr.flash_set_data(Z.values)
+<span class="org-variable-name">fit</span> = flashr.flash(data, var_type=<span class="org-string">'constant'</span>, backfit=<span class="org-constant">True</span>)
+<span class="org-keyword">with</span> <span class="org-builtin">open</span>(<span class="org-string">'flash-result.pkl'</span>, <span class="org-string">'wb'</span>) <span class="org-keyword">as</span> f:
   pickle.dump(fit, f)
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-shell">sbatch --partition=broadwl -n1 -c28 --exclusive --mem=16G --time=4:00:00 --job-name=flash
-<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
-<span style="color: #00ff00;">source</span> activate fqtl
+<span class="org-comment-delimiter">#</span><span class="org-comment">!/bin/bash</span>
+<span class="org-builtin">source</span> activate fqtl
 module load htslib
 module load plink
 python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/apply-flash.py
@@ -768,12 +768,12 @@ Read the results.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
-<span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">Explicitly call numpy2ri instead of pandas2ri because flashr doesn't support</span>
-<span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">data frames: https://github.com/stephenslab/flashr/issues/94</span>
-<span style="color: #0000ff;">data</span> = flashr.flash_set_data(rpy2.robjects.numpy2ri.numpy2ri(Z.values))
-<span style="color: #00ff00;">with</span> <span style="color: #00ff00;">open</span>(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/flash-result.pkl'</span>, <span style="color: #00ffff;">'rb'</span>) <span style="color: #00ff00;">as</span> f:
-  <span style="color: #0000ff;">fit</span> = pickle.load(f)
+<pre class="src src-ipython"><span class="org-variable-name">Z</span> = pd.read_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
+<span class="org-comment-delimiter"># </span><span class="org-comment">Explicitly call numpy2ri instead of pandas2ri because flashr doesn't support</span>
+<span class="org-comment-delimiter"># </span><span class="org-comment">data frames: https://github.com/stephenslab/flashr/issues/94</span>
+<span class="org-variable-name">data</span> = flashr.flash_set_data(rpy2.robjects.numpy2ri.numpy2ri(Z.values))
+<span class="org-keyword">with</span> <span class="org-builtin">open</span>(<span class="org-string">'/broad/hptmp/aksarkar/fqtl/flash-result.pkl'</span>, <span class="org-string">'rb'</span>) <span class="org-keyword">as</span> f:
+  <span class="org-variable-name">fit</span> = pickle.load(f)
 </pre>
 </div>
 
@@ -782,7 +782,7 @@ Count the number of factors.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">K</span> = np.array(fit[0])
+<pre class="src src-ipython"><span class="org-variable-name">K</span> = np.array(fit[0])
 K
 </pre>
 </div>
@@ -797,9 +797,9 @@ Recover the modules.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
-<span style="color: #0000ff;">gene_modules</span> = pd.DataFrame(np.array(fit[3].rx2(<span style="color: #00ffff;">'l'</span>)), index=Z.index)
-<span style="color: #0000ff;">trait_modules</span> = pd.DataFrame(np.array(fit[3].rx2(<span style="color: #00ffff;">'f'</span>)), index=Z.columns)
+<pre class="src src-ipython"><span class="org-variable-name">Z</span> = pd.read_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
+<span class="org-variable-name">gene_modules</span> = pd.DataFrame(np.array(fit[3].rx2(<span class="org-string">'l'</span>)), index=Z.index)
+<span class="org-variable-name">trait_modules</span> = pd.DataFrame(np.array(fit[3].rx2(<span class="org-string">'f'</span>)), index=Z.columns)
 </pre>
 </div>
 
@@ -808,21 +808,21 @@ Estimate lfsr for the factors and loadings.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">M</span> = 5000
-<span style="color: #0000ff;">T</span> = flashr.flash_f_sampler(data, fit[fit.names.index(<span style="color: #00ffff;">'fit'</span>)], np.arange(1, K + 1))(M)
-<span style="color: #0000ff;">trait_pr_pos</span> = np.stack([np.sign(np.array(T[i])) == 1] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(M)).mean(axis=0).reshape(trait_modules.shape)
-<span style="color: #0000ff;">trait_pr_neg</span> = np.stack([np.sign(np.array(T[i])) == -1] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(M)).mean(axis=0).reshape(trait_modules.shape)
-<span style="color: #0000ff;">trait_lfsr</span> = np.fmin(trait_pr_pos, trait_pr_neg)
+<pre class="src src-ipython"><span class="org-variable-name">M</span> = 5000
+<span class="org-variable-name">T</span> = flashr.flash_f_sampler(data, fit[fit.names.index(<span class="org-string">'fit'</span>)], np.arange(1, K + 1))(M)
+<span class="org-variable-name">trait_pr_pos</span> = np.stack([np.sign(np.array(T[i])) == 1] <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(M)).mean(axis=0).reshape(trait_modules.shape)
+<span class="org-variable-name">trait_pr_neg</span> = np.stack([np.sign(np.array(T[i])) == -1] <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(M)).mean(axis=0).reshape(trait_modules.shape)
+<span class="org-variable-name">trait_lfsr</span> = np.fmin(trait_pr_pos, trait_pr_neg)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython">pd.DataFrame(trait_lfsr, index=Z.columns).to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, compression=<span style="color: #00ffff;">'gzip'</span>)
+<pre class="src src-ipython">pd.DataFrame(trait_lfsr, index=Z.columns).to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, compression=<span class="org-string">'gzip'</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">trait_lfsr</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>).values
+<pre class="src src-ipython"><span class="org-variable-name">trait_lfsr</span> = pd.read_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz'</span>, sep=<span class="org-string">'\t'</span>).values
 </pre>
 </div>
 
@@ -831,27 +831,27 @@ Report the trait modules.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython">(pd.concat({i: trait_modules[i][trait_lfsr[:,i] &lt; 0.01] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(trait_modules.shape[1])})
+<pre class="src src-ipython">(pd.concat({i: trait_modules[i][trait_lfsr[:,i] &lt; 0.01] <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(trait_modules.shape[1])})
  .reset_index()
- .groupby(<span style="color: #00ffff;">'level_0'</span>)
- .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[x[0].<span style="color: #00ff00;">abs</span>().sort_values(ascending=<span style="color: #00ffff;">False</span>).index])
- .reset_index(drop=<span style="color: #00ffff;">True</span>)
- .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-modules.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+ .groupby(<span class="org-string">'level_0'</span>)
+ .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.loc[x[0].<span class="org-builtin">abs</span>().sort_values(ascending=<span class="org-constant">False</span>).index])
+ .reset_index(drop=<span class="org-constant">True</span>)
+ .to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-modules.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>))
 </pre>
 </div>
 
 <div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
 plt.gcf().set_size_inches(7, 5)
-<span style="color: #0000ff;">W</span> = np.where(trait_lfsr &lt; 0.01, trait_modules, 0)
-<span style="color: #0000ff;">module_order</span> = order(W.T)
-<span style="color: #0000ff;">trait_order</span> = np.argsort(np.<span style="color: #00ff00;">abs</span>(W[:,module_order]).argmax(axis=1))
-plt.imshow(W.T[:,trait_order][module_order], cmap=colorcet.cm[<span style="color: #00ffff;">'coolwarm'</span>], vmin=-1, vmax=1)
-<span style="color: #0000ff;">cb</span> = plt.colorbar(shrink=0.35)
-cb.set_label(<span style="color: #00ffff;">'Normalized loading'</span>)
-plt.xlabel(<span style="color: #00ffff;">'Traits'</span>)
+<span class="org-variable-name">W</span> = np.where(trait_lfsr &lt; 0.01, trait_modules, 0)
+<span class="org-variable-name">module_order</span> = order(W.T)
+<span class="org-variable-name">trait_order</span> = np.argsort(np.<span class="org-builtin">abs</span>(W[:,module_order]).argmax(axis=1))
+plt.imshow(W.T[:,trait_order][module_order], cmap=colorcet.cm[<span class="org-string">'coolwarm'</span>], vmin=-1, vmax=1)
+<span class="org-variable-name">cb</span> = plt.colorbar(shrink=0.35)
+cb.set_label(<span class="org-string">'Normalized loading'</span>)
+plt.xlabel(<span class="org-string">'Traits'</span>)
 plt.xticks([])
-plt.ylabel(<span style="color: #00ffff;">'Modules'</span>)
+plt.ylabel(<span class="org-string">'Modules'</span>)
 plt.yticks([])
 plt.tight_layout()
 </pre>
@@ -868,12 +868,12 @@ Report the gene modules.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython">(pd.concat({i: gene_modules[i][np.<span style="color: #00ff00;">abs</span>(gene_modules[i]) &gt; 0.05] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(gene_modules.shape[1])})
+<pre class="src src-ipython">(pd.concat({i: gene_modules[i][np.<span class="org-builtin">abs</span>(gene_modules[i]) &gt; 0.05] <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(gene_modules.shape[1])})
  .reset_index()
- .groupby(<span style="color: #00ffff;">'level_0'</span>)
- .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[x[0].<span style="color: #00ff00;">abs</span>().sort_values(ascending=<span style="color: #00ffff;">False</span>).index])
- .reset_index(drop=<span style="color: #00ffff;">True</span>)
- .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+ .groupby(<span class="org-string">'level_0'</span>)
+ .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.loc[x[0].<span class="org-builtin">abs</span>().sort_values(ascending=<span class="org-constant">False</span>).index])
+ .reset_index(drop=<span class="org-constant">True</span>)
+ .to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>))
 </pre>
 </div>
 
@@ -882,12 +882,12 @@ Compute pathway enrichments for the gene modules using PANTHER.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-bash"><span style="color: #00ff00;">function</span> <span style="color: #0000ff;">z</span> {
-    zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz | <span style="color: #00ffff;">\</span>
-        awk -vm=$<span style="color: #0000ff;">1</span> <span style="color: #00ffff;">'$2 == m {print $3}'</span> | <span style="color: #00ffff;">\</span>
-        curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F <span style="color: #0000ff;">organism</span>=<span style="color: #00ffff;">"Homo sapiens"</span> -F <span style="color: #0000ff;">geneList</span>=@- -F <span style="color: #0000ff;">enrichmentType</span>=fullGO_process -F <span style="color: #0000ff;">type</span>=enrichment -F <span style="color: #0000ff;">correction</span>=FDR &gt;/broad/hptmp/aksarkar/fqtl/twas/panther-module-$<span style="color: #0000ff;">1</span>.txt
+<pre class="src src-bash"><span class="org-keyword">function</span> <span class="org-function-name">z</span> {
+    zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz | <span class="org-sh-escaped-newline">\</span>
+        awk -vm=$<span class="org-variable-name">1</span> <span class="org-string">'$2 == m {print $3}'</span> | <span class="org-sh-escaped-newline">\</span>
+        curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F <span class="org-variable-name">organism</span>=<span class="org-string">"Homo sapiens"</span> -F <span class="org-variable-name">geneList</span>=@- -F <span class="org-variable-name">enrichmentType</span>=fullGO_process -F <span class="org-variable-name">type</span>=enrichment -F <span class="org-variable-name">correction</span>=FDR &gt;/broad/hptmp/aksarkar/fqtl/twas/panther-module-$<span class="org-variable-name">1</span>.txt
 }
-<span style="color: #00ff00;">export</span> -f z
+<span class="org-builtin">export</span> -f z
 z 0
 </pre>
 </div>
@@ -897,23 +897,23 @@ Read the pathway enrichments.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">panther_results</span> = (pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/panther-module-{i}.txt'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=<span style="color: #00ffff;">None</span>)
-                             <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(47)], keys=<span style="color: #00ff00;">range</span>(47))
+<pre class="src src-ipython"><span class="org-variable-name">panther_results</span> = (pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/fqtl/twas/panther-module-{i}.txt'</span>, sep=<span class="org-string">'\t'</span>, index_col=<span class="org-constant">None</span>)
+                             <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(47)], keys=<span class="org-builtin">range</span>(47))
                    .reset_index(level=0))
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython">panther_results.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>)
+<pre class="src src-ipython">panther_results.to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index=<span class="org-constant">None</span>)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython">(panther_results[panther_results[<span style="color: #00ffff;">'FDR'</span>] &lt; 0.05]
- .groupby(<span style="color: #00ffff;">'level_0'</span>)
- .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: pd.Series(<span style="color: #00ff00;">list</span>(<span style="color: #00ff00;">set</span>(x[<span style="color: #00ffff;">'Name'</span>]))))
- .reset_index(level=1, drop=<span style="color: #00ffff;">True</span>)
- .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways-fdr-05.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">True</span>))
+<pre class="src src-ipython">(panther_results[panther_results[<span class="org-string">'FDR'</span>] &lt; 0.05]
+ .groupby(<span class="org-string">'level_0'</span>)
+ .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: pd.Series(<span class="org-builtin">list</span>(<span class="org-builtin">set</span>(x[<span class="org-string">'Name'</span>]))))
+ .reset_index(level=1, drop=<span class="org-constant">True</span>)
+ .to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways-fdr-05.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">True</span>))
 </pre>
 </div>
 </div>
@@ -923,7 +923,7 @@ Read the pathway enrichments.
 <h3 id="org016c83f">K-means clustering of TWAS</h3>
 <div class="outline-text-3" id="text-org016c83f">
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+<pre class="src src-ipython"><span class="org-variable-name">Z</span> = pd.read_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
 </pre>
 </div>
 
@@ -933,8 +933,8 @@ Read the pathway enrichments.
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #0000ff;">m1</span> = sklearn.cluster.KMeans(n_clusters=20).fit(Z.T.fillna(0))
-pd.concat({i: pd.Series(Z.columns[m1.labels_ == i]) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(m1.n_clusters)}).reset_index().to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-k-means.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+<pre class="src src-ipython"><span class="org-variable-name">m1</span> = sklearn.cluster.KMeans(n_clusters=20).fit(Z.T.fillna(0))
+pd.concat({i: pd.Series(Z.columns[m1.labels_ == i]) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(m1.n_clusters)}).reset_index().to_csv(<span class="org-string">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-k-means.txt.gz'</span>, compression=<span class="org-string">'gzip'</span>, sep=<span class="org-string">'\t'</span>)
 </pre>
 </div>
 </div>
@@ -943,7 +943,7 @@ pd.concat({i: pd.Series(Z.columns[m1.labels_ == i]) <span style="color: #00ff00;
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="date">Created: 2020-04-04 Sat 13:26</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
