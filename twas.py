@@ -45,7 +45,7 @@ def load_geno(prefix):
 def est_gwas_cov(x, sv_thresh=1e-4):
   u, d, vt = np.linalg.svd(x, full_matrices=False)
   d[d < sv_thresh] = 0
-  return pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt), index=x.columns, columns=x.columns)
+  return pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt) / x.shape[0], index=x.columns, columns=x.columns)
 
 if __name__ == '__main__':
   f = tabix.open(sys.argv[1])
