@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2020-04-04 Sat 13:10 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tissue-specific TWAS analysis</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="Abhishek Sarkar">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+<link rel="stylesheet" type="text/css" href="css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="css/main.css"/>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2019 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        displayAlign: "center",
+        displayIndent: "0em",
+
+        "HTML-CSS": { scale: 100,
+                        linebreaks: { automatic: "false" },
+                        webFont: "TeX"
+                       },
+        SVG: {scale: 100,
+              linebreaks: { automatic: "false" },
+              font: "TeX"},
+        NativeMML: {scale: 100},
+        TeX: { equationNumbers: {autoNumber: "AMS"},
+               MultLineWidth: "85%",
+               TagSide: "right",
+               TagIndent: ".8em"
+             }
+});
+</script>
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Tissue-specific TWAS analysis</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orgc7be20c">Introduction</a></li>
+<li><a href="#orgf0fa823">Setup</a></li>
+<li><a href="#orga36f8b0">Results</a>
+<ul>
+<li><a href="#org948da4d">Read the TWAS summary statistics</a></li>
+<li><a href="#org3eb9afa">Plotting code</a></li>
+<li><a href="#twas-descriptive">Descriptive statistics</a></li>
+<li><a href="#whole-blood-twas">Comparison to whole blood TWAS</a></li>
+<li><a href="#org6ecaf1b">GOM of TWAS</a></li>
+<li><a href="#factor-analysis">Sparse factor analysis of TWAS</a></li>
+<li><a href="#org016c83f">K-means clustering of TWAS</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgc7be20c" class="outline-2">
+<h2 id="orgc7be20c">Introduction</h2>
+<div class="outline-text-2" id="text-orgc7be20c">
+<p>
+Here, we analyze tissue-specific TWAS of 114 traits (Barbeira et al. 2018)
+based on <code>fqtl</code> models.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgf0fa823" class="outline-2">
+<h2 id="orgf0fa823">Setup</h2>
+<div class="outline-text-2" id="text-orgf0fa823">
+<div class="org-src-container">
+<pre class="src src-ipython" id="org5974704"><span style="color: #00ff00;">import</span> glob
+<span style="color: #00ff00;">import</span> itertools <span style="color: #00ff00;">as</span> it
+<span style="color: #00ff00;">import</span> os.path
+<span style="color: #00ff00;">import</span> numpy <span style="color: #00ff00;">as</span> np
+<span style="color: #00ff00;">import</span> pandas <span style="color: #00ff00;">as</span> pd
+<span style="color: #00ff00;">import</span> scipy.linalg <span style="color: #00ff00;">as</span> sl
+<span style="color: #00ff00;">import</span> scipy.special <span style="color: #00ff00;">as</span> sp
+<span style="color: #00ff00;">import</span> scipy.stats <span style="color: #00ff00;">as</span> st
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">%matplotlib inline
+%config <span style="color: #0000ff;">InlineBackend.figure_formats</span> = <span style="color: #00ff00;">set</span>([<span style="color: #00ffff;">'retina'</span>])
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">import</span> colorcet
+<span style="color: #00ff00;">import</span> matplotlib
+<span style="color: #00ff00;">import</span> matplotlib.pyplot <span style="color: #00ff00;">as</span> plt
+<span style="color: #0000ff;">plt.rcParams</span>[<span style="color: #00ffff;">'font.family'</span>] = <span style="color: #00ffff;">'Nimbus Sans'</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orga36f8b0" class="outline-2">
+<h2 id="orga36f8b0">Results</h2>
+<div class="outline-text-2" id="text-orga36f8b0">
+</div>
+<div id="outline-container-org948da4d" class="outline-3">
+<h3 id="org948da4d">Read the TWAS summary statistics</h3>
+<div class="outline-text-3" id="text-org948da4d">
+<p>
+For each trait, assign each gene/mechanism to the best LD block.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
+<span style="color: #00ff00;">import</span> os
+<span style="color: #0000ff;">i</span> = os.environ[<span style="color: #00ffff;">'SLURM_ARRAY_TASK_ID'</span>]
+(pd.read_csv(f<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/docs/share/twas/chr{i}.twas.bed.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+ .groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>])
+ .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[np.<span style="color: #00ff00;">abs</span>(x[<span style="color: #00ffff;">'z'</span>]).idxmax])
+ .reset_index(drop=<span style="color: #00ffff;">True</span>)
+ .to_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">sbatch --partition=broadwl --mem=8G --time=40:00 --job-name=assign-twas -a 1
+<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
+<span style="color: #00ff00;">source</span> activate fqtl
+module load htslib
+module load plink
+python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/assign-twas.py
+</pre>
+</div>
+
+<p>
+Extract the significant hits.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
+<span style="color: #00ff00;">def</span> <span style="color: #0000ff;">bh</span>(chunk, key, alpha=0.05):
+  <span style="color: #0000ff;">N</span> = chunk.shape[0]
+  <span style="color: #0000ff;">temp</span> = chunk.sort_values(key)
+  <span style="color: #0000ff;">keep</span> = temp[key] &lt; alpha * np.arange(1, N + 1) / N
+  <span style="color: #00ff00;">return</span> temp[keep]
+<span style="color: #0000ff;">twas_sig</span> = (pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
+            .groupby([<span style="color: #00ffff;">'trait'</span>])
+            .<span style="color: #00ff00;">apply</span>(bh, key=<span style="color: #00ffff;">'p.val'</span>)
+            .reset_index(drop=<span style="color: #00ffff;">True</span>))
+twas_sig.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">sbatch --partition=broadwl --mem=32G --time=10:00 --job-name=extract-twas
+<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
+<span style="color: #00ff00;">source</span> activate fqtl
+module load htslib
+module load plink
+python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas.py
+</pre>
+</div>
+
+<p>
+Read the significant hits.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython" id="org771317d"><span style="color: #0000ff;">twas_sig</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-significant.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3eb9afa" class="outline-3">
+<h3 id="org3eb9afa">Plotting code</h3>
+<div class="outline-text-3" id="text-org3eb9afa">
+<p>
+Reorder matrix columns to get similar columns next to each other.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">def</span> <span style="color: #0000ff;">newick</span>(children, root, N):
+  <span style="color: #00ff00;">if</span> root &lt; N:
+    <span style="color: #00ff00;">return</span> [root]
+  <span style="color: #00ff00;">else</span>:
+    <span style="color: #0000ff;">left</span>, <span style="color: #0000ff;">right</span> = children[root - N]
+    <span style="color: #0000ff;">res</span> = newick(children, left, N)
+    res.extend(newick(children, right, N))
+    <span style="color: #00ff00;">return</span> res
+
+<span style="color: #00ff00;">def</span> <span style="color: #0000ff;">order</span>(L):
+  <span style="color: #0000ff;">N</span> = L.shape[0]
+  <span style="color: #0000ff;">m0</span> = sklearn.cluster.AgglomerativeClustering(compute_full_tree=<span style="color: #00ffff;">True</span>).fit(L)
+  <span style="color: #00ff00;">return</span> newick(m0.children_, 2 * (N - 1), N)
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org530b27e" class="outline-3">
+<h3 id="twas-descriptive"><a id="org530b27e"></a>Descriptive statistics</h3>
+<div class="outline-text-3" id="text-twas-descriptive">
+<p>
+Count the total number of trait-gene associations.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">twas_sig.groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>]).first().shape[0]
+</pre>
+</div>
+
+<pre class="example">
+31551
+
+</pre>
+
+<p>
+Plot the distribution of associations per trait.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">genes_per_trait</span> = twas_sig.groupby(<span style="color: #00ffff;">'trait'</span>)[<span style="color: #00ffff;">'ensg'</span>].agg(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(x))).reset_index()
+plt.clf()
+plt.gcf().set_size_inches(3, 3)
+plt.hist(genes_per_trait[<span style="color: #00ffff;">'ensg'</span>], bins=20, color=<span style="color: #00ffff;">'k'</span>, density=<span style="color: #00ffff;">True</span>)
+plt.xlabel(<span style="color: #00ffff;">'Number of associated genes'</span>)
+plt.ylabel(<span style="color: #00ffff;">'Density'</span>)
+</pre>
+</div>
+
+<pre class="example">
+Text(0, 0.5, 'Density')
+
+</pre>
+
+<div class="figure">
+<p><img src="figure/analysis.org/twas-per-trait.png" alt="twas-per-trait.png">
+</p>
+</div>
+
+<p>
+Count the number of gene associations with more than one mechanism.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">twas_sig.groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>])[<span style="color: #00ffff;">'factor'</span>].<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(x)) &gt; 1).<span style="color: #00ff00;">sum</span>()
+</pre>
+</div>
+
+<pre class="example">
+10931
+
+</pre>
+
+<p>
+Plot the distribution of number of gene-factor associations across traits.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">gene_factor_assoc</span> = twas_sig.groupby([<span style="color: #00ffff;">'trait'</span>, <span style="color: #00ffff;">'ensg'</span>])[<span style="color: #00ffff;">'factor'</span>].agg(<span style="color: #00ff00;">len</span>).reset_index()
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">plt.clf()
+plt.gcf().set_size_inches(3, 3)
+plt.hist(gene_factor_assoc[<span style="color: #00ffff;">'factor'</span>], bins=gene_factor_assoc[<span style="color: #00ffff;">'factor'</span>].<span style="color: #00ff00;">max</span>() - 1, color=<span style="color: #00ffff;">'k'</span>, density=<span style="color: #00ffff;">True</span>)
+plt.xlabel(<span style="color: #00ffff;">'Number of associated mechanisms'</span>)
+plt.ylabel(<span style="color: #00ffff;">'Density'</span>)
+</pre>
+</div>
+
+<pre class="example">
+Text(0, 0.5, 'Density')
+
+</pre>
+
+<div class="figure">
+<p><img src="figure/analysis.org/gene-factor-dist.png" alt="gene-factor-dist.png">
+</p>
+</div>
+
+<p>
+Plot the distribution of average between mechanism LD for genes where
+multiple factors were associated.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">between_ld</span> = (gene_factor_assoc
+              .reset_index()
+              .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: ld_distribution.loc[x[<span style="color: #00ffff;">'ensg'</span>], <span style="color: #00ffff;">'between'</span>].<span style="color: #00ff00;">max</span>() <span style="color: #00ff00;">if</span> x[<span style="color: #00ffff;">'ensg'</span>] <span style="color: #00ff00;">in</span> ld_distribution.index <span style="color: #00ff00;">and</span> x[<span style="color: #00ffff;">'factor'</span>] &gt; 1 <span style="color: #00ff00;">else</span> 0, axis=1))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">plt.clf()
+plt.gcf().set_size_inches(3, 3)
+plt.hist(between_ld, bins=10, color=<span style="color: #00ffff;">'k'</span>, density=<span style="color: #00ffff;">True</span>)
+plt.xlabel(<span style="color: #00ffff;">'Between mechanism LD $r^2$'</span>)
+plt.ylabel(<span style="color: #00ffff;">'Density'</span>)
+</pre>
+</div>
+
+<pre class="example">
+Text(0, 0.5, 'Density')
+
+</pre>
+
+<div class="figure">
+<p><img src="figure/analysis.org/ind-mechs-per-gene.png" alt="ind-mechs-per-gene.png">
+</p>
+</div>
+
+<p>
+Count the proportion of genes with independent mechanisms (\(r^2 < 0.1\)).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">(between_ld &lt; 0.1).<span style="color: #00ff00;">sum</span>() / between_ld.shape[0]
+</pre>
+</div>
+
+<pre class="example">
+0.8699388577385816
+
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org3df8f0e" class="outline-3">
+<h3 id="whole-blood-twas"><a id="org3df8f0e"></a>Comparison to whole blood TWAS</h3>
+<div class="outline-text-3" id="text-whole-blood-twas">
+<p>
+Count the number of TWAS associations driven by mechanisms with high
+posterior probability on whole blood.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">blood_twas_sig</span> = (fqtl_tis
+ .merge(keep_gene_factors)
+ .query(<span style="color: #00ffff;">'tis == "Whole_Blood"'</span>)
+ .query(<span style="color: #00ffff;">'lodds &gt; 2.94'</span>)
+ [[<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'ld'</span>]]
+ .merge(twas_sig, left_on=[<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'ld'</span>], right_on=[<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'ld.idx'</span>]))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">blood_twas_sig.shape[0]
+</pre>
+</div>
+
+<pre class="example">
+12321
+
+</pre>
+
+<p>
+Look at the traits with blood TWAS genes.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(blood_twas_sig[<span style="color: #00ffff;">'trait'</span>]))
+</pre>
+</div>
+
+<pre class="example">
+113
+
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org6ecaf1b" class="outline-3">
+<h3 id="org6ecaf1b">GOM of TWAS</h3>
+<div class="outline-text-3" id="text-org6ecaf1b">
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">B</span> = (~np.isnan(twas_sig.pivot_table(index=<span style="color: #00ffff;">'trait'</span>, columns=<span style="color: #00ffff;">'ensg'</span>, values=<span style="color: #00ffff;">'z'</span>))).astype(<span style="color: #00ff00;">int</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">obj</span> = np.inf
+<span style="color: #0000ff;">opt</span> = <span style="color: #00ffff;">None</span>
+<span style="color: #00ff00;">for</span> trial <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(10):
+  <span style="color: #0000ff;">m</span> = skd.NMF(n_components=15, beta_loss=1, solver=<span style="color: #00ffff;">'mu'</span>, init=<span style="color: #00ffff;">'random'</span>, l1_ratio=1, alpha=1).fit(B)
+  <span style="color: #00ff00;">if</span> m.reconstruction_err_ &lt; obj:
+    <span style="color: #0000ff;">opt</span> = m
+    <span style="color: #0000ff;">obj</span> = m.reconstruction_err_
+<span style="color: #0000ff;">L</span> = opt.transform(B)
+<span style="color: #0000ff;">F</span> = opt.components_
+<span style="color: #0000ff;">L</span> *= F.<span style="color: #00ff00;">sum</span>(axis=1)
+<span style="color: #0000ff;">L</span> /= L.<span style="color: #00ff00;">sum</span>(axis=1, keepdims=<span style="color: #00ffff;">True</span>)
+<span style="color: #0000ff;">F</span> /= F.<span style="color: #00ff00;">sum</span>(axis=1, keepdims=<span style="color: #00ffff;">True</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">plt.clf()
+plt.gcf().set_size_inches(7, 5)
+<span style="color: #0000ff;">W</span> = L.T[:,order(L)]
+plt.imshow(W[np.argsort(W.argmax(axis=1))], cmap=colorcet.cm[<span style="color: #00ffff;">'blues'</span>], vmin=0, vmax=1)
+plt.xlabel(<span style="color: #00ffff;">'Traits'</span>)
+plt.xticks([])
+plt.ylabel(<span style="color: #00ffff;">'Modules'</span>)
+plt.yticks([])
+</pre>
+</div>
+
+<pre class="example">
+([], &lt;a list of 0 Text yticklabel objects&gt;)
+
+</pre>
+
+<div class="figure">
+<p><img src="figure/analysis.org/nmf.png" alt="nmf.png">
+</p>
+</div>
+
+<p>
+Report the trait modules.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">(pd.concat({i: pd.DataFrame.from_dict({<span style="color: #00ffff;">'trait'</span>: B.index[L[:,i] &gt; .5], <span style="color: #00ffff;">'loading'</span>: L[:,i][L[:,i] &gt; .5]}) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(L.shape[1])})
+ .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/nmf.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+</pre>
+</div>
+
+<p>
+Report the gene modules.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">def</span> <span style="color: #0000ff;">top_genes</span>(topics, num_genes=100):
+  <span style="color: #0000ff;">res</span> = {}
+  <span style="color: #00ff00;">for</span> k, t <span style="color: #00ff00;">in</span> topics.iteritems():
+    <span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">Dey et al. Eq. 3-4 https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1006599</span>
+    <span style="color: #0000ff;">kl</span> = t.values.reshape(-1, 1) * np.log((t.values.reshape(-1, 1) + 1e-8) / (topics.values + 1e-8)) + topics.values - t.values.reshape(-1, 1)
+    <span style="color: #0000ff;">kl</span> = np.delete(kl, k, axis=1)
+    <span style="color: #0000ff;">res</span>[k] = pd.DataFrame(kl, index=B.columns).<span style="color: #00ff00;">min</span>(axis=1).sort_values(ascending=<span style="color: #00ffff;">False</span>).head(n=num_genes)
+  <span style="color: #00ff00;">return</span> pd.concat(res).reset_index()
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">res</span> = top_genes(pd.DataFrame(F.T, index=B.columns), num_genes=100)
+res.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>)
+</pre>
+</div>
+
+<p>
+Compute pathway enrichments for the gene modules using PANTHER.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><span style="color: #00ff00;">function</span> <span style="color: #0000ff;">z</span> {
+    zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-topics.txt.gz | <span style="color: #00ffff;">\</span>
+        awk -vm=$<span style="color: #0000ff;">1</span> <span style="color: #00ffff;">'$1 == m {print $2}'</span> | <span style="color: #00ffff;">\</span>
+        curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F <span style="color: #0000ff;">organism</span>=<span style="color: #00ffff;">"Homo sapiens"</span> -F <span style="color: #0000ff;">geneList</span>=@- -F <span style="color: #0000ff;">enrichmentType</span>=fullGO_process -F <span style="color: #0000ff;">type</span>=enrichment -F <span style="color: #0000ff;">correction</span>=FDR &gt;/broad/hptmp/aksarkar/fqtl/twas/panther-topic-$<span style="color: #0000ff;">1</span>.txt
+}
+<span style="color: #00ff00;">export</span> -f z
+parallel -j5 z ::: $(<span style="color: #ff00ff;">seq</span> 0 14)
+</pre>
+</div>
+
+<p>
+Read the pathway enrichments.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">panther_results</span> = (pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/panther-topic-{i}.txt'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=<span style="color: #00ffff;">None</span>)
+                             <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(topics.shape[1])], keys=<span style="color: #00ff00;">range</span>(topics.shape[1]))
+                   .reset_index(level=0))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">panther_results.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">(panther_results[panther_results[<span style="color: #00ffff;">'FDR'</span>] &lt; 0.05]
+ .groupby(<span style="color: #00ffff;">'level_0'</span>)
+ .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: pd.Series(<span style="color: #00ff00;">list</span>(<span style="color: #00ff00;">set</span>(x[<span style="color: #00ffff;">'Name'</span>]))))
+ .reset_index(level=1, drop=<span style="color: #00ffff;">True</span>)
+ .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gom-pathways-fdr-05.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">True</span>))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf9a9f19" class="outline-3">
+<h3 id="factor-analysis"><a id="orgf9a9f19"></a>Sparse factor analysis of TWAS</h3>
+<div class="outline-text-3" id="text-factor-analysis">
+<p>
+Construct the matrix of TWAS association \(z\)-scores for genes with at
+least one significant hit. Take the best \(z\)-score across mechanisms and
+LD blocks.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
+&lt;&lt;read-twas-sig&gt;&gt;
+<span style="color: #0000ff;">twas</span> = pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/chr{i}-twas.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
+<span style="color: #0000ff;">Z</span> = (twas[twas[<span style="color: #00ffff;">'ensg'</span>].isin(<span style="color: #00ff00;">set</span>(twas_sig[<span style="color: #00ffff;">'ensg'</span>]))]
+     .groupby([<span style="color: #00ffff;">'ensg'</span>, <span style="color: #00ffff;">'trait'</span>])
+     .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[np.<span style="color: #00ff00;">abs</span>(x[<span style="color: #00ffff;">'z'</span>]).idxmax])[<span style="color: #00ffff;">'z'</span>]
+     .reset_index()
+     .pivot_table(index=<span style="color: #00ffff;">'ensg'</span>, columns=<span style="color: #00ffff;">'trait'</span>, values=<span style="color: #00ffff;">'z'</span>))
+Z.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">sbatch --partition=broadwl --mem=16G --job-name=extract-twas-z
+<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
+<span style="color: #00ff00;">source</span> activate fqtl
+python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/extract-twas-z.py
+</pre>
+</div>
+
+<p>
+Fit <code>flash</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">&lt;&lt;imports&gt;&gt;
+&lt;&lt;r-imports&gt;&gt;
+<span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+<span style="color: #0000ff;">data</span> = flashr.flash_set_data(Z.values)
+<span style="color: #0000ff;">fit</span> = flashr.flash(data, var_type=<span style="color: #00ffff;">'constant'</span>, backfit=<span style="color: #00ffff;">True</span>)
+<span style="color: #00ff00;">with</span> <span style="color: #00ff00;">open</span>(<span style="color: #00ffff;">'flash-result.pkl'</span>, <span style="color: #00ffff;">'wb'</span>) <span style="color: #00ff00;">as</span> f:
+  pickle.dump(fit, f)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">sbatch --partition=broadwl -n1 -c28 --exclusive --mem=16G --time=4:00:00 --job-name=flash
+<span style="color: brightcyan; font-style: italic;">#</span><span style="color: brightcyan; font-style: italic;">!/bin/bash</span>
+<span style="color: #00ff00;">source</span> activate fqtl
+module load htslib
+module load plink
+python /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/apply-flash.py
+</pre>
+</div>
+
+<p>
+Read the results.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+<span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">Explicitly call numpy2ri instead of pandas2ri because flashr doesn't support</span>
+<span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">data frames: https://github.com/stephenslab/flashr/issues/94</span>
+<span style="color: #0000ff;">data</span> = flashr.flash_set_data(rpy2.robjects.numpy2ri.numpy2ri(Z.values))
+<span style="color: #00ff00;">with</span> <span style="color: #00ff00;">open</span>(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/flash-result.pkl'</span>, <span style="color: #00ffff;">'rb'</span>) <span style="color: #00ff00;">as</span> f:
+  <span style="color: #0000ff;">fit</span> = pickle.load(f)
+</pre>
+</div>
+
+<p>
+Count the number of factors.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">K</span> = np.array(fit[0])
+K
+</pre>
+</div>
+
+<pre class="example">
+array([47], dtype=int32)
+
+</pre>
+
+<p>
+Recover the modules.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+<span style="color: #0000ff;">gene_modules</span> = pd.DataFrame(np.array(fit[3].rx2(<span style="color: #00ffff;">'l'</span>)), index=Z.index)
+<span style="color: #0000ff;">trait_modules</span> = pd.DataFrame(np.array(fit[3].rx2(<span style="color: #00ffff;">'f'</span>)), index=Z.columns)
+</pre>
+</div>
+
+<p>
+Estimate lfsr for the factors and loadings.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">M</span> = 5000
+<span style="color: #0000ff;">T</span> = flashr.flash_f_sampler(data, fit[fit.names.index(<span style="color: #00ffff;">'fit'</span>)], np.arange(1, K + 1))(M)
+<span style="color: #0000ff;">trait_pr_pos</span> = np.stack([np.sign(np.array(T[i])) == 1] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(M)).mean(axis=0).reshape(trait_modules.shape)
+<span style="color: #0000ff;">trait_pr_neg</span> = np.stack([np.sign(np.array(T[i])) == -1] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(M)).mean(axis=0).reshape(trait_modules.shape)
+<span style="color: #0000ff;">trait_lfsr</span> = np.fmin(trait_pr_pos, trait_pr_neg)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">pd.DataFrame(trait_lfsr, index=Z.columns).to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, compression=<span style="color: #00ffff;">'gzip'</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">trait_lfsr</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-lfsr.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>).values
+</pre>
+</div>
+
+<p>
+Report the trait modules.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">(pd.concat({i: trait_modules[i][trait_lfsr[:,i] &lt; 0.01] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(trait_modules.shape[1])})
+ .reset_index()
+ .groupby(<span style="color: #00ffff;">'level_0'</span>)
+ .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[x[0].<span style="color: #00ff00;">abs</span>().sort_values(ascending=<span style="color: #00ffff;">False</span>).index])
+ .reset_index(drop=<span style="color: #00ffff;">True</span>)
+ .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-trait-modules.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">plt.clf()
+plt.gcf().set_size_inches(7, 5)
+<span style="color: #0000ff;">W</span> = np.where(trait_lfsr &lt; 0.01, trait_modules, 0)
+<span style="color: #0000ff;">module_order</span> = order(W.T)
+<span style="color: #0000ff;">trait_order</span> = np.argsort(np.<span style="color: #00ff00;">abs</span>(W[:,module_order]).argmax(axis=1))
+plt.imshow(W.T[:,trait_order][module_order], cmap=colorcet.cm[<span style="color: #00ffff;">'coolwarm'</span>], vmin=-1, vmax=1)
+<span style="color: #0000ff;">cb</span> = plt.colorbar(shrink=0.35)
+cb.set_label(<span style="color: #00ffff;">'Normalized loading'</span>)
+plt.xlabel(<span style="color: #00ffff;">'Traits'</span>)
+plt.xticks([])
+plt.ylabel(<span style="color: #00ffff;">'Modules'</span>)
+plt.yticks([])
+plt.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/analysis.org/flashr-trait-modules.png" alt="flashr-trait-modules.png">
+</p>
+</div>
+
+<p>
+Report the gene modules.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">(pd.concat({i: gene_modules[i][np.<span style="color: #00ff00;">abs</span>(gene_modules[i]) &gt; 0.05] <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(gene_modules.shape[1])})
+ .reset_index()
+ .groupby(<span style="color: #00ffff;">'level_0'</span>)
+ .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x.loc[x[0].<span style="color: #00ff00;">abs</span>().sort_values(ascending=<span style="color: #00ffff;">False</span>).index])
+ .reset_index(drop=<span style="color: #00ffff;">True</span>)
+ .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+</pre>
+</div>
+
+<p>
+Compute pathway enrichments for the gene modules using PANTHER.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-bash"><span style="color: #00ff00;">function</span> <span style="color: #0000ff;">z</span> {
+    zcat /project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-gene-modules.txt.gz | <span style="color: #00ffff;">\</span>
+        awk -vm=$<span style="color: #0000ff;">1</span> <span style="color: #00ffff;">'$2 == m {print $3}'</span> | <span style="color: #00ffff;">\</span>
+        curl -s http://www.pantherdb.org/webservices/garuda/tools/enrichment/VER_2/enrichment.jsp -F <span style="color: #0000ff;">organism</span>=<span style="color: #00ffff;">"Homo sapiens"</span> -F <span style="color: #0000ff;">geneList</span>=@- -F <span style="color: #0000ff;">enrichmentType</span>=fullGO_process -F <span style="color: #0000ff;">type</span>=enrichment -F <span style="color: #0000ff;">correction</span>=FDR &gt;/broad/hptmp/aksarkar/fqtl/twas/panther-module-$<span style="color: #0000ff;">1</span>.txt
+}
+<span style="color: #00ff00;">export</span> -f z
+z 0
+</pre>
+</div>
+
+<p>
+Read the pathway enrichments.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">panther_results</span> = (pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/twas/panther-module-{i}.txt'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=<span style="color: #00ffff;">None</span>)
+                             <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(47)], keys=<span style="color: #00ff00;">range</span>(47))
+                   .reset_index(level=0))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">panther_results.to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index=<span style="color: #00ffff;">None</span>)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">(panther_results[panther_results[<span style="color: #00ffff;">'FDR'</span>] &lt; 0.05]
+ .groupby(<span style="color: #00ffff;">'level_0'</span>)
+ .<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: pd.Series(<span style="color: #00ff00;">list</span>(<span style="color: #00ff00;">set</span>(x[<span style="color: #00ffff;">'Name'</span>]))))
+ .reset_index(level=1, drop=<span style="color: #00ffff;">True</span>)
+ .to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-pathways-fdr-05.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">True</span>))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org016c83f" class="outline-3">
+<h3 id="org016c83f">K-means clustering of TWAS</h3>
+<div class="outline-text-3" id="text-org016c83f">
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">Z</span> = pd.read_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-z-matrix.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">m1</span> = sklearn.cluster.KMeans(n_clusters=20).fit(Z.T.fillna(0))
+pd.concat({i: pd.Series(Z.columns[m1.labels_ == i]) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(m1.n_clusters)}).reset_index().to_csv(<span style="color: #00ffff;">'/project2/mstephens/aksarkar/projects/gtex_fqtl_2018/data/twas-k-means.txt.gz'</span>, compression=<span style="color: #00ffff;">'gzip'</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Abhishek Sarkar</p>
+<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

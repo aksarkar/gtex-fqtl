@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2020-04-04 Sat 13:10 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TWAS analysis</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="Abhishek Sarkar">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+<link rel="stylesheet" type="text/css" href="css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="css/main.css"/>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2019 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        displayAlign: "center",
+        displayIndent: "0em",
+
+        "HTML-CSS": { scale: 100,
+                        linebreaks: { automatic: "false" },
+                        webFont: "TeX"
+                       },
+        SVG: {scale: 100,
+              linebreaks: { automatic: "false" },
+              font: "TeX"},
+        NativeMML: {scale: 100},
+        TeX: { equationNumbers: {autoNumber: "AMS"},
+               MultLineWidth: "85%",
+               TagSide: "right",
+               TagIndent: ".8em"
+             }
+});
+</script>
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">TWAS analysis</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orged0fb56">Introduction</a></li>
+<li><a href="#orgbb95c24">Setup</a></li>
+<li><a href="#results">Results</a>
+<ul>
+<li><a href="#orgcafff56">Pre-process the summary statistics</a></li>
+<li><a href="#orgb348d59">AD replication data</a></li>
+<li><a href="#orga92d915">Prepare the genotype matrices</a></li>
+<li><a href="#org5d750fa">Develop TWAS implementation</a></li>
+<li><a href="#org7afd361">Run TWAS</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orged0fb56" class="outline-2">
+<h2 id="orged0fb56">Introduction</h2>
+<div class="outline-text-2" id="text-orged0fb56">
+<p>
+Here, we use the fitted <code>fqtl</code> models to perform TWAS.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgbb95c24" class="outline-2">
+<h2 id="orgbb95c24">Setup</h2>
+<div class="outline-text-2" id="text-orgbb95c24">
+<div class="org-src-container">
+<pre class="src src-ipython" id="org7be5838"><span style="color: #00ff00;">import</span> glob
+<span style="color: #00ff00;">import</span> itertools <span style="color: #00ff00;">as</span> it
+<span style="color: #00ff00;">import</span> os.path
+<span style="color: #00ff00;">import</span> numpy <span style="color: #00ff00;">as</span> np
+<span style="color: #00ff00;">import</span> pandas <span style="color: #00ff00;">as</span> pd
+<span style="color: #00ff00;">import</span> scipy.linalg <span style="color: #00ff00;">as</span> sl
+<span style="color: #00ff00;">import</span> scipy.special <span style="color: #00ff00;">as</span> sp
+<span style="color: #00ff00;">import</span> scipy.stats <span style="color: #00ff00;">as</span> st
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">%matplotlib inline
+%config <span style="color: #0000ff;">InlineBackend.figure_formats</span> = <span style="color: #00ff00;">set</span>([<span style="color: #00ffff;">'retina'</span>])
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">import</span> colorcet
+<span style="color: #00ff00;">import</span> matplotlib
+<span style="color: #00ff00;">import</span> matplotlib.pyplot <span style="color: #00ff00;">as</span> plt
+<span style="color: #0000ff;">plt.rcParams</span>[<span style="color: #00ffff;">'font.family'</span>] = <span style="color: #00ffff;">'Nimbus Sans'</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org7554c3a" class="outline-2">
+<h2 id="results"><a id="org7554c3a"></a>Results</h2>
+<div class="outline-text-2" id="text-results">
+</div>
+<div id="outline-container-orgcafff56" class="outline-3">
+<h3 id="orgcafff56">Pre-process the summary statistics</h3>
+<div class="outline-text-3" id="text-orgcafff56">
+<p>
+The GTEx consortium provided summary statistics in hg38. LiftOver back to
+hg19 to combine with v6p models.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">find /broad/compbio/data/gtex_gwas_hg38_tabix/ -name <span style="color: #00ffff;">"*.bed.gz"</span> &gt;manifest
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 36 -l <span style="color: #0000ff;">h_vmem</span>=4G
+<span style="color: #00ff00;">set</span> -e
+<span style="color: #00ff00;">function</span> <span style="color: #0000ff;">lift</span> () {
+    <span style="color: #0000ff;">in</span>=gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span> .bed.gz).hg38
+    zcat $<span style="color: #0000ff;">1</span> | awk -vOFS=<span style="color: #00ffff;">'\t'</span> <span style="color: #00ffff;">'NR &gt; 1 {print $1, $2, $3, $4"|"$5"|"$6"|"$7}'</span> &gt;$<span style="color: #0000ff;">in</span>
+    <span style="color: #0000ff;">out</span>=gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span> .bed.gz).hg19
+    liftOver $<span style="color: #0000ff;">in</span> /broad/compbio/data/gtex_eqtl_tabix/hg38ToHg19.over.chain.gz $<span style="color: #0000ff;">out</span> $<span style="color: #0000ff;">out</span>.unmapped
+    sort -k1,1 -k2,2n $<span style="color: #0000ff;">out</span> | tr <span style="color: #00ffff;">'|'</span> <span style="color: #00ffff;">'\t'</span> | bgzip &gt;gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span>)
+    tabix gtex-gwas-hg19/$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span>)
+}
+<span style="color: #00ff00;">readarray</span> -O1 tasks &lt;manifest
+lift ${<span style="color: #0000ff;">tasks</span>[$<span style="color: #0000ff;">SGE_TASK_ID</span>]}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgb348d59" class="outline-3">
+<h3 id="orgb348d59">AD replication data</h3>
+<div class="outline-text-3" id="text-orgb348d59">
+<p>
+Download ADGC phase 2 (<a href="https://www.niagads.org/datasets/ng00076">https://www.niagads.org/datasets/ng00076</a>)
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">curl -sL <span style="color: #00ffff;">"https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&amp;type=field_collection_item&amp;id=100&amp;force="</span> -o adgc2.txt
+gzip adgc2.txt
+</pre>
+</div>
+
+<p>
+The data is on hg37.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">zcat adgc2.txt.gz | awk <span style="color: #00ffff;">'NR == 2 {split($1, a, ":"); print a[2]; exit}'</span> | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+</pre>
+</div>
+
+<p>
+The publicly available data does not have \(z\)-scores or odds ratios.
+</p>
+
+<p>
+Download GWAX (<a href="https://www.nature.com/articles/ng.3766">https://www.nature.com/articles/ng.3766</a>)
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -terse -cwd -V -j y -sync n
+curl -sOL <span style="color: #00ffff;">"http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"</span>
+</pre>
+</div>
+
+<p>
+The data is on hg37.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">zgrep -wm1 rs144155419 /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+</pre>
+</div>
+
+<p>
+Convert \(p\)-values to \(z\)-scores and format the data.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">data</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/AD.gwax.assoc.gz'</span>, sep=<span style="color: #00ffff;">' '</span>)
+<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'chr'</span>] = data[<span style="color: #00ffff;">'CHR'</span>].<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: f<span style="color: #00ffff;">'chr{x}'</span>)
+<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'start'</span>] = data[<span style="color: #00ffff;">'BP'</span>]
+<span style="color: brightcyan; font-style: italic;"># </span><span style="color: brightcyan; font-style: italic;">Important: we removed indels from GTEx</span>
+<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'end'</span>] = data.<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x[<span style="color: #00ffff;">'BP'</span>] <span style="color: #00ff00;">if</span> <span style="color: #00ff00;">len</span>(x[<span style="color: #00ffff;">'A1'</span>]) == <span style="color: #00ff00;">len</span>(x[<span style="color: #00ffff;">'A2'</span>]) == 1 <span style="color: #00ff00;">else</span> np.nan, axis=1).astype(<span style="color: #00ffff;">'Int64'</span>)
+<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'zscore'</span>] = np.sqrt(st.chi2(1).sf(data[<span style="color: #00ffff;">'P'</span>])) * np.sign(np.log(data[<span style="color: #00ffff;">'OR'</span>]))
+<span style="color: #0000ff;">data</span>[<span style="color: #00ffff;">'pval'</span>] = data[<span style="color: #00ffff;">'P'</span>]
+(data[[<span style="color: #00ffff;">'chr'</span>, <span style="color: #00ffff;">'start'</span>, <span style="color: #00ffff;">'end'</span>, <span style="color: #00ffff;">'A1'</span>, <span style="color: #00ffff;">'A2'</span>, <span style="color: #00ffff;">'zscore'</span>, <span style="color: #00ffff;">'pval'</span>]]
+ .dropna()
+ .to_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed'</span>, index=<span style="color: #00ffff;">None</span>, header=<span style="color: #00ffff;">None</span>, sep=<span style="color: #00ffff;">'\t'</span>))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -terse -V -sync n -j y -N tabix -S /bin/bash
+<span style="color: #00ff00;">set</span> -e
+bgzip /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed
+tabix /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed.gz
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orga92d915" class="outline-3">
+<h3 id="orga92d915">Prepare the genotype matrices</h3>
+<div class="outline-text-3" id="text-orga92d915">
+<p>
+Extract genotypes within 1 megabase of the TSS for each gene. Genes are
+indexed in the manifest.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">awk <span style="color: #00ffff;">'$6 &gt;= 10'</span> /broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-*-valid.genes.txt &gt;manifest
+qsub -cwd -V -terse -sync n -j y -N plink -t 1-100 -l <span style="color: #0000ff;">h_vmem</span>=2G
+awk -vn=$<span style="color: #0000ff;">SGE_TASK_LAST</span> -vi=$<span style="color: #0000ff;">SGE_TASK_ID</span> <span style="color: #00ffff;">'NR % n == i - 1 {w = 1000000; ub = $4 + w; if ($4 &gt; w) {lb = $4 - w} else {lb = 0} system("plink --memory 2000 --bfile /broad/compbio/data/GTEx/GTEx_restricted/v6_plink/BED_qc/chr"$3" --make-bed --chr "$3" --from-bp "lb" --to-bp "ub" --out "$1)}'</span> manifest
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org5d750fa" class="outline-3">
+<h3 id="org5d750fa">Develop TWAS implementation</h3>
+<div class="outline-text-3" id="text-org5d750fa">
+<p>
+Extract the fqtl model for <i>APOE</i>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">gene_id</span> = 49282
+<span style="color: #0000ff;">prefix</span> = f<span style="color: #00ffff;">'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'</span>
+<span style="color: #0000ff;">snp_annot</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.snp.info.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
+<span style="color: #0000ff;">snp_lodds</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.snp.lodds.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
+<span style="color: #0000ff;">tis_annot</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.tis.info.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>, index_col=0)
+<span style="color: #0000ff;">tis_lodds</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.tis.lodds.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
+<span style="color: #0000ff;">keep</span> = (sp.expit(snp_lodds) &gt; .95).<span style="color: #00ff00;">any</span>(axis=0)
+<span style="color: #0000ff;">L</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.snp.theta.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
+<span style="color: #0000ff;">L.index</span> = snp_annot[3]
+<span style="color: #0000ff;">F</span> = pd.read_csv(f<span style="color: #00ffff;">'{prefix}/fqtl.tis.theta.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>)
+<span style="color: #0000ff;">F.index</span> = tis_annot[1].<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: x[:-9])
+<span style="color: #0000ff;">B</span> = L.loc[:,keep].dot(F.loc[:,keep].T)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">import</span> pyplink
+<span style="color: #00ff00;">with</span> pyplink.PyPlink(f<span style="color: #00ffff;">'/broad/hptmp/aksarkar/geno/{gene_id}'</span>) <span style="color: #00ff00;">as</span> f:
+  <span style="color: #0000ff;">fam</span> = f.get_fam()
+  <span style="color: #0000ff;">bim</span> = f.get_bim()
+  <span style="color: #0000ff;">x</span> = np.ma.masked_equal(np.array([row <span style="color: #00ff00;">for</span> _, row <span style="color: #00ff00;">in</span> f.iter_geno()]).T, -1).astype(<span style="color: #00ff00;">float</span>)
+  <span style="color: #0000ff;">x</span> -= x.mean()
+  <span style="color: #0000ff;">x</span> /= x.std()
+  <span style="color: #0000ff;">x</span> = pd.DataFrame(x, index=fam[<span style="color: #00ffff;">'fid'</span>], columns=bim[<span style="color: #00ffff;">'pos'</span>])
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">u</span>, <span style="color: #0000ff;">d</span>, <span style="color: #0000ff;">vt</span> = np.linalg.svd(x, full_matrices=<span style="color: #00ffff;">False</span>)
+(d &gt; 1e-4).<span style="color: #00ff00;">sum</span>()
+</pre>
+</div>
+
+<pre class="example">
+450
+
+</pre>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">import</span> tabix
+<span style="color: #0000ff;">genes</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/geno/manifest'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>, index_col=0)
+<span style="color: #0000ff;">f</span> = tabix.<span style="color: #00ff00;">open</span>(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz'</span>)
+<span style="color: #0000ff;">row</span> = genes.loc[gene_id]
+<span style="color: #0000ff;">gwas_z</span> = (pd.DataFrame(f.query(f<span style="color: #00ffff;">'chr{row[2]}'</span>, <span style="color: #00ff00;">int</span>(row[3] - 1e6), <span style="color: #00ff00;">int</span>(row[3] + 1e6)))
+          .astype(<span style="color: #00ff00;">dict</span>(<span style="color: #00ff00;">enumerate</span>([<span style="color: #00ff00;">str</span>, <span style="color: #00ff00;">int</span>, <span style="color: #00ff00;">int</span>, <span style="color: #00ff00;">str</span>, <span style="color: #00ff00;">str</span>, <span style="color: #00ff00;">float</span>, <span style="color: #00ff00;">float</span>]))))
+gwas_z.head()
+</pre>
+</div>
+
+<pre class="example">
+0          1          2      3  4       5      6
+0  chr1  206669789  206669790      A  G -1.2358  0.217
+1  chr1  206669957  206669958      A  G  0.3987  0.690
+2  chr1  206670168  206670169      C  G  0.3929  0.694
+3  chr1  206670257  206670258  GGGAA  G  0.0811  0.935
+4  chr1  206670322  206670323      A  G  0.6941  0.488
+</pre>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">twas_data</span> = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index(<span style="color: #00ffff;">'2_x'</span>)
+twas_data.head(n=1)
+</pre>
+</div>
+
+<pre class="example">
+2  3  4   0_x        1_x 3_x 4_x     5_x     6  0_y  \
+2_x
+206669958  206669958  A  G  chr1  206669957   A   G  0.3987  0.69    1
+
+1_y  2_y        3_y 4_y 5_y
+2_x
+206669958  1_206669958_G_A_b37    0  206669958   A   G
+</pre>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">Bs</span> = B.loc[twas_data[<span style="color: #00ffff;">'3_y'</span>]]
+<span style="color: #0000ff;">Bs</span> = Bs.loc[~Bs.index.duplicated(keep=<span style="color: #00ffff;">'first'</span>)]
+<span style="color: #0000ff;">z</span> = twas_data[<span style="color: #00ffff;">'5_x'</span>]
+<span style="color: #0000ff;">z</span> = z.loc[~z.index.duplicated(keep=<span style="color: #00ffff;">'first'</span>)]
+<span style="color: #0000ff;">X</span> = x.loc[:,twas_data[<span style="color: #00ffff;">'3_y'</span>]]
+<span style="color: #0000ff;">X</span> = X.loc[:,~X.columns.duplicated(keep=<span style="color: #00ffff;">'first'</span>)]
+<span style="color: #0000ff;">R</span> = X.T.dot(X) / x.shape[0]
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">mkdir -p tasks
+awk <span style="color: #00ffff;">'{print &gt;"/broad/hptmp/aksarkar/tasks/chunk-" int(NR / 1000) ".txt"}'</span> geno/manifest
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N test -l <span style="color: #0000ff;">h_vmem</span>=1G,<span style="color: #0000ff;">h_rt</span>=0:30:00
+<span style="color: #00ff00;">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org7afd361" class="outline-3">
+<h3 id="org7afd361">Run TWAS</h3>
+<div class="outline-text-3" id="text-org7afd361">
+<div class="org-src-container">
+<pre class="src src-shell">find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name <span style="color: #00ffff;">"*.bed.gz"</span> | parallel --dry-run <span style="color: #00ffff;">'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}'</span> &gt;/broad/hptmp/aksarkar/twas/joblist
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span style="color: #0000ff;">h_vmem</span>=4G,<span style="color: #0000ff;">h_rt</span>=12:00:00 -t 1-2
+<span style="color: #00ff00;">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/twas/joblist
+<span style="color: #00ff00;">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+<span style="color: #00ff00;">exec</span> ${<span style="color: #0000ff;">tasks</span>[$<span style="color: #0000ff;">SGE_TASK_ID</span>]}
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Abhishek Sarkar</p>
+<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

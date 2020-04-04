@@ -1,0 +1,7 @@
+body {
+    width: 60em; 
+    margin:auto
+}
+pre.src {
+    overflow:auto
+}

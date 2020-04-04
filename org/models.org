@@ -1,0 +1,274 @@
+#+TITLE: fQTL models
+#+SETUPFILE: setup.org
+
+* Introduction
+
+  We previously fit ~fqtl~ models for 39,998 genes across 44 tissues from GTEx
+  (version 6p). Here, we analyze the fitted ~fqtl~ models.
+
+* Setup
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    (org-babel-lob-ingest "/home/unix/aksarkar/.emacs.d/org-templates/library.org")
+    (add-to-list 'python-shell-completion-native-disabled-interpreters "jupyter")
+  #+END_SRC
+
+  #+RESULTS:
+  | jupyter | pypy | ipython |
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    ;; This is needed to unjam when async tasks fail
+    (ob-ipython--dequeue 'ob-ipython--async-queue)
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
+
+  #+RESULTS:
+  : 16405971
+
+  #+NAME: imports
+  #+BEGIN_SRC ipython
+    import glob
+    import itertools as it
+    import os.path
+    import numpy as np
+    import pandas as pd
+    import scipy.linalg as sl
+    import scipy.special as sp
+    import scipy.stats as st
+  #+END_SRC
+
+  #+RESULTS: imports
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    %matplotlib inline
+    %config InlineBackend.figure_formats = set(['retina'])
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[2]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    import colorcet
+    import matplotlib
+    import matplotlib.pyplot as plt
+    plt.rcParams['font.family'] = 'Nimbus Sans'
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[3]:
+  :END:
+
+* Simulation
+** Generate the data
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/simulation/
+     parallel --dry-run ./sim_data.sh {} /broad/hptmp/aksarkar/simulation/{1}/{#} :::: /broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/simulation/selected.genes ::: 1 2 3 ::: 0.05 0.1 0.15 0.2 0.3 ::: 1 3 5 ::: 5 10 20 30 ::: 1001 >joblist
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/simulation/
+     qsub -cwd -V -terse -sync n -j y -N sim -l h_vmem=2G -t 1
+     readarray -O1 tasks < /broad/hptmp/aksarkar/simulation/joblist
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl
+     pushd /broad/compbio/ypp/gtex/analysis/fqtl-gtex/
+     exec ${tasks[$SGE_TASK_ID]}
+   #+END_SRC
+
+   #+RESULTS:
+   : 11937892.1-1:1
+
+* Multi-tissue eQTL mapping
+  :PROPERTIES:
+  :CUSTOM_ID: gtex
+  :END:
+** Read the data
+
+   Extract the GTEx univariate summary statistics.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/fqtl/
+     qsub -cwd -V -terse -j y
+     cp /broad/compbio/data/GTEx/v6_GTEx_Analysis_2015-01-12/eqtl_data/GTEx_Analysis_2015-01-12_eGenesFiltered.tar.gz .
+     mkdir -p egenes-filtered
+     tar xf GTEx_Analysis_2015-01-12_eGenesFiltered.tar.gz -C egenes-filtered
+   #+END_SRC
+
+   #+RESULTS:
+   : 11562455
+
+   Extract the gene expression matrices to get sample sizes.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/fqtl
+     qsub -cwd -V -terse -j y
+     cp /broad/compbio/data/GTEx/v6_GTEx_Analysis_2015-01-12/eqtl_data/GTEx_Analysis_2015-01-12_eQTLInputFiles_geneLevelNormalizedExpressionMatrices.tar.gz .
+     mkdir -p expr
+     tar xf GTEx_Analysis_2015-01-12_eQTLInputFiles_geneLevelNormalizedExpressionMatrices.tar.gz -C expr
+     parallel --halt=now,fail=1 -X gzip ::: expr/*.txt
+   #+END_SRC
+
+   #+RESULTS:
+   : 11563180
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/fqtl/expr/
+     qsub -cwd -V -terse -j y
+     function z () { zcat $1 | awk -vf=$(basename $1 _Analysis.expr.txt.gz) 'NR == 1 {n = NF - 1} END {print f, n, NR - 1; exit}'; }
+     export -f z
+     parallel -j1 z ::: *.expr.txt.gz | awk 'BEGIN {print "tissue", "num_samples", "num_genes"} {print}' >sample-sizes.txt
+   #+END_SRC
+
+   #+RESULTS:
+   : 11576647
+
+   #+BEGIN_SRC ipython
+     sample_sizes = pd.read_csv('/broad/hptmp/aksarkar/fqtl/expr/sample-sizes.txt', sep=' ')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[4]:
+   :END:
+
+   Read the GTEx tissue colors.
+
+   #+BEGIN_SRC ipython
+     colors = pd.read_csv('/broad/compbio/aksarkar/projects/gtex-fqtl/data/tissues.colors.txt', header=None, sep='\t')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[5]:
+   :END:
+
+   Parse the ~fqtl~ results.
+
+   #+BEGIN_SRC ipython
+     def unpack(X):
+       if '|' in X.iloc[3]:
+         T = pd.DataFrame(it.zip_longest(*X.apply(lambda x: str(x).split('|')).values, fillvalue=np.nan))
+         T.columns = X.index
+         T.fillna(T.iloc[0], inplace=True)
+         return T
+       else:
+         return X.to_frame().T
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[6]:
+   :END:
+
+   #+BEGIN_SRC ipython :async t
+     fqtl_res = pd.concat([pd.read_csv(f'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/chr{i}/50/combined.txt.gz', header=None, sep='\t') for i in range(1, 23)])
+     fqtl_res.columns = ['gene', 'chr', 'tss', 'tissue_idx', 'tissue_name', 'tissue_theta', 'tissue_se', 'tissue_lodds', 'snp_name', 'snp_theta', 'snp_se', 'snp_lodds', 'factor', 'pip']
+     fqtl_res = pd.concat([unpack(x) for _, x in fqtl_res[fqtl_res['pip'] == 0.95].iterrows()])
+     fqtl_res.to_csv('/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz', sep='\t', compression='gzip')
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[107]:
+   :END:
+
+   Read the ~fqtl~ results.
+
+   #+BEGIN_SRC ipython
+     fqtl_res = pd.read_csv('/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[5]:
+   :END:
+
+   Count how many genes we retained at least one factor/loading pair for.
+
+   #+BEGIN_SRC ipython
+     len(fqtl_res['gene'].unique())
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[8]:
+   : 20433
+   :END:
+
+** Relationship of sample size to number of eGenes
+   :PROPERTIES:
+   :CUSTOM_ID: egenes
+   :END:
+
+   Read the univariate eGenes (\(q < 0.05\)).
+
+   #+BEGIN_SRC ipython
+     univariate_res = {os.path.basename(f[:-24]): pd.read_csv(f, sep='\t') for f in glob.glob('/broad/hptmp/aksarkar/fqtl/egenes-filtered/*.filteredEGenes')}
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[8]:
+   :END:
+
+   Read the list of genes for which we fit ~fqtl~ models.
+
+   #+BEGIN_SRC ipython
+     valid_genes = pd.concat([pd.read_csv(f'/broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-{i}-valid.genes.txt', sep='\t', header=None) for i in range(1, 23)])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[9]:
+   :END:
+
+   Plot the relationship between eGenes and sample size.
+
+   #+BEGIN_SRC ipython
+     fqtl_egenes = fqtl_res.groupby('tissue_name')['gene'].agg(lambda x: len(set(x)))
+     univariate_egenes = pd.DataFrame.from_dict({k: univariate_res[k].shape[0] for k in univariate_res}, orient='index')
+     J = (sample_sizes
+          .merge(colors, left_on='tissue', right_on=0)
+          .merge(fqtl_egenes, left_on='tissue', right_on='tissue_name')
+          .merge(univariate_egenes, left_on='tissue', right_index=True)
+          .rename({'gene': 'fqtl', '0_y': 'univariate', 1: 'color'}, axis='columns'))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[37]:
+   :END:
+
+   # TODO: https://matplotlib.org/gallery/text_labels_and_annotations/custom_legends.html
+
+   #+BEGIN_SRC ipython :ipyfile figure/analysis.org/egenes-vs-sample-size.png
+     plt.clf()
+     plt.gcf().set_size_inches(4, 3)
+     for _, row in J.iterrows():
+       base = row['univariate']
+       top = row['fqtl']
+       plt.scatter(row['num_samples'], base, c=f'{row["color"]}', s=8, marker='.')
+       plt.scatter(row['num_samples'], top, c=f'{row["color"]}', s=8, marker='^')
+       plt.arrow(row['num_samples'], base, 0, top - base, lw=1, color=f'{row["color"]}')
+     plt.xlabel('Sample size')
+     plt.ylabel('Number of discovered eGenes')
+     plt.ylim(0, 11000)
+     plt.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[43]:
+   [[file:figure/analysis.org/egenes-vs-sample-size.png]]
+   :END:
+
+   fQTL finds more eGenes in brain tissues, but appears to over-regularize
+   tissues with larger sample sizes. This is in constrast to what we observe in
+   applying fQTL to GTEx v8.
+

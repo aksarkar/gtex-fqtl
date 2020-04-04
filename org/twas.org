@@ -1,0 +1,328 @@
+#+TITLE: TWAS analysis
+#+SETUPFILE: setup.org
+
+* Introduction
+
+  Here, we use the fitted ~fqtl~ models to perform TWAS.
+
+* Setup
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    (org-babel-lob-ingest "/home/unix/aksarkar/.emacs.d/org-templates/library.org")
+    (add-to-list 'python-shell-completion-native-disabled-interpreters "jupyter")
+  #+END_SRC
+
+  #+RESULTS:
+  | jupyter | pypy | ipython |
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    ;; This is needed to unjam when async tasks fail
+    (ob-ipython--dequeue 'ob-ipython--async-queue)
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
+
+  #+RESULTS:
+  : 16405971
+
+  #+NAME: imports
+  #+BEGIN_SRC ipython
+    import glob
+    import itertools as it
+    import os.path
+    import numpy as np
+    import pandas as pd
+    import scipy.linalg as sl
+    import scipy.special as sp
+    import scipy.stats as st
+  #+END_SRC
+
+  #+RESULTS: imports
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    %matplotlib inline
+    %config InlineBackend.figure_formats = set(['retina'])
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[2]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    import colorcet
+    import matplotlib
+    import matplotlib.pyplot as plt
+    plt.rcParams['font.family'] = 'Nimbus Sans'
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[3]:
+  :END:
+
+* Results
+  :PROPERTIES:
+  :CUSTOM_ID: results
+  :END:
+** Pre-process the summary statistics
+
+   The GTEx consortium provided summary statistics in hg38. LiftOver back to
+   hg19 to combine with v6p models.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     find /broad/compbio/data/gtex_gwas_hg38_tabix/ -name "*.bed.gz" >manifest
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -cwd -terse -V -sync n -j y -N liftover -S /bin/bash -t 36 -l h_vmem=4G
+     set -e
+     function lift () {
+         in=gtex-gwas-hg19/$(basename $1 .bed.gz).hg38
+         zcat $1 | awk -vOFS='\t' 'NR > 1 {print $1, $2, $3, $4"|"$5"|"$6"|"$7}' >$in
+         out=gtex-gwas-hg19/$(basename $1 .bed.gz).hg19
+         liftOver $in /broad/compbio/data/gtex_eqtl_tabix/hg38ToHg19.over.chain.gz $out $out.unmapped
+         sort -k1,1 -k2,2n $out | tr '|' '\t' | bgzip >gtex-gwas-hg19/$(basename $1)
+         tabix gtex-gwas-hg19/$(basename $1)
+     }
+     readarray -O1 tasks <manifest
+     lift ${tasks[$SGE_TASK_ID]}
+   #+END_SRC
+
+   #+RESULTS:
+   : 16367449.36-36:1
+
+** AD replication data
+
+  Download ADGC phase 2 (https://www.niagads.org/datasets/ng00076)
+
+  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+    curl -sL "https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&type=field_collection_item&id=100&force=" -o adgc2.txt
+    gzip adgc2.txt
+  #+END_SRC
+
+  #+RESULTS:
+
+  The data is on hg37.
+
+  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
+    zcat adgc2.txt.gz | awk 'NR == 2 {split($1, a, ":"); print a[2]; exit}' | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+  #+END_SRC
+
+  #+RESULTS:
+  | chr1 | 100000012 | 100000012 | rs10875231 |   | + | 224514623 | GRCh37.p5,reference | G/T | genomic | snp | byFrequency |   |   | unknown | exact | 2 |   | 14 | 1000GENOMES,ABI,BCM-HGSC-SUB,BGI,BUSHMAN,COMPLETE_GENOMICS,CSHL-HAPMAP,ENSEMBL,GMI,HGSV,ILLUMINA-UK,PERLEGEN,PJP,SC_SNP | 1 | T | 2184 | 0.3086 | submitter_linkout,1,assembly_specific,MAF>5%_in_1+population,MAF>5%_in_all_population,double_hit_by_Mullikin |   | 120 | 137 | unknown |
+
+  The publicly available data does not have \(z\)-scores or odds ratios.
+
+  Download GWAX (https://www.nature.com/articles/ng.3766)
+
+  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+    qsub -terse -cwd -V -j y -sync n
+    curl -sOL "http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"
+  #+END_SRC
+
+  #+RESULTS:
+  : 16367576
+
+  The data is on hg37.
+
+  #+BEGIN_SRC shell
+    zgrep -wm1 rs144155419 /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+  #+END_SRC
+
+  #+RESULTS:
+  | chr1 | 717587 | 717587 | rs144155419 |   | + | 224514624 | GRCh37.p5,reference | A/G | genomic | snp | by1000G | 0 | 0 | unknown | exact | 2 |   | 1 | 1000GENOMES | 1 | A | 2184 | 0.0064 | 1,assembly_specific |   | 134 | 134 | unknown |
+
+  Convert \(p\)-values to \(z\)-scores and format the data.
+
+  #+BEGIN_SRC ipython :async t
+    data = pd.read_csv('/broad/hptmp/aksarkar/AD.gwax.assoc.gz', sep=' ')
+    data['chr'] = data['CHR'].apply(lambda x: f'chr{x}')
+    data['start'] = data['BP']
+    # Important: we removed indels from GTEx
+    data['end'] = data.apply(lambda x: x['BP'] if len(x['A1']) == len(x['A2']) == 1 else np.nan, axis=1).astype('Int64')
+    data['zscore'] = np.sqrt(st.chi2(1).sf(data['P'])) * np.sign(np.log(data['OR']))
+    data['pval'] = data['P']
+    (data[['chr', 'start', 'end', 'A1', 'A2', 'zscore', 'pval']]
+     .dropna()
+     .to_csv('/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed', index=None, header=None, sep='\t'))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[4]:
+  :END:
+
+  #+BEGIN_SRC shell
+    qsub -cwd -terse -V -sync n -j y -N tabix -S /bin/bash
+    set -e
+    bgzip /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed
+    tabix /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed.gz
+  #+END_SRC
+
+  #+RESULTS:
+  : 16367736
+
+** Prepare the genotype matrices
+
+   Extract genotypes within 1 megabase of the TSS for each gene. Genes are
+   indexed in the manifest.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/geno/
+     awk '$6 >= 10' /broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-*-valid.genes.txt >manifest
+     qsub -cwd -V -terse -sync n -j y -N plink -t 1-100 -l h_vmem=2G
+     awk -vn=$SGE_TASK_LAST -vi=$SGE_TASK_ID 'NR % n == i - 1 {w = 1000000; ub = $4 + w; if ($4 > w) {lb = $4 - w} else {lb = 0} system("plink --memory 2000 --bfile /broad/compbio/data/GTEx/GTEx_restricted/v6_plink/BED_qc/chr"$3" --make-bed --chr "$3" --from-bp "lb" --to-bp "ub" --out "$1)}' manifest
+   #+END_SRC
+
+   #+RESULTS:
+   : 16367776.1-100:1
+
+** Develop TWAS implementation
+
+   Extract the fqtl model for /APOE/
+
+   #+BEGIN_SRC ipython
+     gene_id = 49282
+     prefix = f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'
+     snp_annot = pd.read_csv(f'{prefix}/fqtl.snp.info.gz', sep='\t', header=None)
+     snp_lodds = pd.read_csv(f'{prefix}/fqtl.snp.lodds.txt.gz', sep='\t', header=None)
+     tis_annot = pd.read_csv(f'{prefix}/fqtl.tis.info.gz', sep='\t', header=None, index_col=0)
+     tis_lodds = pd.read_csv(f'{prefix}/fqtl.tis.lodds.txt.gz', sep='\t', header=None)
+     keep = (sp.expit(snp_lodds) > .95).any(axis=0)
+     L = pd.read_csv(f'{prefix}/fqtl.snp.theta.txt.gz', sep='\t', header=None)
+     L.index = snp_annot[3]
+     F = pd.read_csv(f'{prefix}/fqtl.tis.theta.txt.gz', sep='\t', header=None)
+     F.index = tis_annot[1].apply(lambda x: x[:-9])
+     B = L.loc[:,keep].dot(F.loc[:,keep].T)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[55]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     import pyplink
+     with pyplink.PyPlink(f'/broad/hptmp/aksarkar/geno/{gene_id}') as f:
+       fam = f.get_fam()
+       bim = f.get_bim()
+       x = np.ma.masked_equal(np.array([row for _, row in f.iter_geno()]).T, -1).astype(float)
+       x -= x.mean()
+       x /= x.std()
+       x = pd.DataFrame(x, index=fam['fid'], columns=bim['pos'])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[19]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     u, d, vt = np.linalg.svd(x, full_matrices=False)
+     (d > 1e-4).sum()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[29]:
+   : 450
+   :END:
+
+   #+BEGIN_SRC ipython
+     import tabix
+     genes = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
+     f = tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz')
+     row = genes.loc[gene_id]
+     gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
+               .astype(dict(enumerate([str, int, int, str, str, float, float]))))
+     gwas_z.head()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[22]:
+   #+BEGIN_EXAMPLE
+     0          1          2      3  4       5      6
+     0  chr1  206669789  206669790      A  G -1.2358  0.217
+     1  chr1  206669957  206669958      A  G  0.3987  0.690
+     2  chr1  206670168  206670169      C  G  0.3929  0.694
+     3  chr1  206670257  206670258  GGGAA  G  0.0811  0.935
+     4  chr1  206670322  206670323      A  G  0.6941  0.488
+   #+END_EXAMPLE
+   :END:
+
+   #+BEGIN_SRC ipython
+     twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
+     twas_data.head(n=1)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[23]:
+   #+BEGIN_EXAMPLE
+     2  3  4   0_x        1_x 3_x 4_x     5_x     6  0_y  \
+     2_x
+     206669958  206669958  A  G  chr1  206669957   A   G  0.3987  0.69    1
+
+     1_y  2_y        3_y 4_y 5_y
+     2_x
+     206669958  1_206669958_G_A_b37    0  206669958   A   G
+   #+END_EXAMPLE
+   :END:
+
+   #+BEGIN_SRC ipython
+     Bs = B.loc[twas_data['3_y']]
+     Bs = Bs.loc[~Bs.index.duplicated(keep='first')]
+     z = twas_data['5_x']
+     z = z.loc[~z.index.duplicated(keep='first')]
+     X = x.loc[:,twas_data['3_y']]
+     X = X.loc[:,~X.columns.duplicated(keep='first')]
+     R = X.T.dot(X) / x.shape[0]
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[24]:
+   :END:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     mkdir -p tasks
+     awk '{print >"/broad/hptmp/aksarkar/tasks/chunk-" int(NR / 1000) ".txt"}' geno/manifest
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -cwd -V -terse -j y -sync n -N test -l h_vmem=1G,h_rt=0:30:00
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+     python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
+   #+END_SRC
+
+   #+RESULTS:
+   : 11926870
+
+** Run TWAS
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" | parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}' >/broad/hptmp/aksarkar/twas/joblist
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=4G,h_rt=12:00:00 -t 1-2
+     readarray -O1 tasks < /broad/hptmp/aksarkar/twas/joblist
+     source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
+     exec ${tasks[$SGE_TASK_ID]}
+   #+END_SRC
+
+   #+RESULTS:
+   : 16367852.1-2:1
+

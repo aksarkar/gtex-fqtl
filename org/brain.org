@@ -1,0 +1,140 @@
+#+TITLE: [[file:brain.org][AD brain-specific TWAS analysis]]
+#+SETUPFILE: setup.org
+
+* Introduction
+
+  Here, we perform discovery and replication of AD gene-level associations in
+  brain tissues using ~fqtl~ models.
+
+* Setup
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    (org-babel-lob-ingest "/home/unix/aksarkar/.emacs.d/org-templates/library.org")
+    (add-to-list 'python-shell-completion-native-disabled-interpreters "jupyter")
+  #+END_SRC
+
+  #+RESULTS:
+  | jupyter | pypy | ipython |
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    ;; This is needed to unjam when async tasks fail
+    (ob-ipython--dequeue 'ob-ipython--async-queue)
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
+
+  #+RESULTS:
+  : 16405971
+
+  #+NAME: imports
+  #+BEGIN_SRC ipython
+    import glob
+    import itertools as it
+    import os.path
+    import numpy as np
+    import pandas as pd
+    import scipy.linalg as sl
+    import scipy.special as sp
+    import scipy.stats as st
+  #+END_SRC
+
+  #+RESULTS: imports
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    %matplotlib inline
+    %config InlineBackend.figure_formats = set(['retina'])
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[2]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    import colorcet
+    import matplotlib
+    import matplotlib.pyplot as plt
+    plt.rcParams['font.family'] = 'Nimbus Sans'
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[3]:
+  :END:
+
+* Data
+** Fitted elastic net models
+
+   [[https://www.nature.com/articles/s41467-018-03621-1][Barbeira et al. 2018]] trained elastic net models on GTEx v6p.
+
+   #+BEGIN_SRC shell :dir /broad/compbio/aksarkar/projects/gtex-fqtl/data/predictdb
+     curl -OL "https://zenodo.org/record/3572842/files/GTEx-V6p-1KG-2016-11-16.tar.gz"
+     tar xf GTEx-V6p-1KG-2016-11-16.tar.gz
+     rm GTEx-V6p-1KG-2016-11-16.tar.gz
+   #+END_SRC
+
+   #+RESULTS:
+
+   #+BEGIN_SRC ipython
+   
+   #+END_SRC
+
+** UTMOST summary statistics
+
+   Download /UTMOST/ summary statistics.
+
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     curl --ftp-pasv -OL "ftp://ftp.biostat.wisc.edu/pub/lu_group/Projects/UTMOST/load_utmost_sumstats/utmost.cross.tissue.sumstats.igap.discovery.txt"
+     curl --ftp-pasv -OL "ftp://ftp.biostat.wisc.edu/pub/lu_group/Projects/UTMOST/load_utmost_sumstats/utmost.cross.tissue.sumstats.gwax.replicate.txt"
+   #+END_SRC
+
+   #+RESULTS:
+
+* Results
+** AD brain-specific TWAS
+
+   Read the results.
+
+   #+BEGIN_SRC ipython
+     igap_res = pd.read_csv('/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer.txt.gz', sep='\t', index_col=0)
+     gwax_res = pd.read_csv('/broad/hptmp/aksarkar/twas/ad-gwax-hg37.txt.gz', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[4]:
+   :END:
+
+   In each brain tissue, find the significant gene-level associations in IGAP (FDR 10%).
+
+   #+BEGIN_SRC ipython
+     igap_p = (igap_res
+               .dropna()
+               .filter(like='Brain', axis=1)
+               .apply(lambda x: st.chi2(1).sf(np.square(x.values)), axis=0))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[5]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     def _bh(x, fdr=.1):
+       temp = np.sort(x)
+       thresh = temp[temp < fdr * np.arange(1, x.shape[0] + 1) / x.shape[0]].max()
+       return x < thresh
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[6]:
+   :END:
+
+   
+

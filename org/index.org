@@ -7,10 +7,11 @@ key idea of our method is to assume that the matrix of effect sizes is low rank
 and sparse, and use a novel Bayesian prior to estimate the posterior
 distribution of that matrix.
 
-- [[file:analysis.org][Analysis of tissue-specific TWAS]]
+- [[file:twas.org][TWAS pipeline]]
+- [[file:brain.org][AD brain-specific TWAS analysis]]
+- [[file:twas-analysis.org][Tissue-specific TWAS analysis]]
 
 Technical details:
 
-- [[file:pooled.org][Pooled QTL analysis]]
-- [[file:two-tissue.org][Two tissue pooled analysis]]
+- [[file:models.org][fQTL models]]
 - [[file:dense.org][Dense factors]]

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2020-04-04 Sat 13:10 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fQTL models</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="Abhishek Sarkar">
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"/>
+<link rel="stylesheet" type="text/css" href="css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="css/main.css"/>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2019 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        displayAlign: "center",
+        displayIndent: "0em",
+
+        "HTML-CSS": { scale: 100,
+                        linebreaks: { automatic: "false" },
+                        webFont: "TeX"
+                       },
+        SVG: {scale: 100,
+              linebreaks: { automatic: "false" },
+              font: "TeX"},
+        NativeMML: {scale: 100},
+        TeX: { equationNumbers: {autoNumber: "AMS"},
+               MultLineWidth: "85%",
+               TagSide: "right",
+               TagIndent: ".8em"
+             }
+});
+</script>
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">fQTL models</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org61773ba">Introduction</a></li>
+<li><a href="#org0e7d827">Setup</a></li>
+<li><a href="#org0d03838">Simulation</a>
+<ul>
+<li><a href="#org97a6e10">Generate the data</a></li>
+</ul>
+</li>
+<li><a href="#gtex">Multi-tissue eQTL mapping</a>
+<ul>
+<li><a href="#org6b00707">Read the data</a></li>
+<li><a href="#egenes">Relationship of sample size to number of eGenes</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org61773ba" class="outline-2">
+<h2 id="org61773ba">Introduction</h2>
+<div class="outline-text-2" id="text-org61773ba">
+<p>
+We previously fit <code>fqtl</code> models for 39,998 genes across 44 tissues from GTEx
+(version 6p). Here, we analyze the fitted <code>fqtl</code> models.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org0e7d827" class="outline-2">
+<h2 id="org0e7d827">Setup</h2>
+<div class="outline-text-2" id="text-org0e7d827">
+<div class="org-src-container">
+<pre class="src src-ipython" id="orgca7ae8c"><span style="color: #00ff00;">import</span> glob
+<span style="color: #00ff00;">import</span> itertools <span style="color: #00ff00;">as</span> it
+<span style="color: #00ff00;">import</span> os.path
+<span style="color: #00ff00;">import</span> numpy <span style="color: #00ff00;">as</span> np
+<span style="color: #00ff00;">import</span> pandas <span style="color: #00ff00;">as</span> pd
+<span style="color: #00ff00;">import</span> scipy.linalg <span style="color: #00ff00;">as</span> sl
+<span style="color: #00ff00;">import</span> scipy.special <span style="color: #00ff00;">as</span> sp
+<span style="color: #00ff00;">import</span> scipy.stats <span style="color: #00ff00;">as</span> st
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">%matplotlib inline
+%config <span style="color: #0000ff;">InlineBackend.figure_formats</span> = <span style="color: #00ff00;">set</span>([<span style="color: #00ffff;">'retina'</span>])
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">import</span> colorcet
+<span style="color: #00ff00;">import</span> matplotlib
+<span style="color: #00ff00;">import</span> matplotlib.pyplot <span style="color: #00ff00;">as</span> plt
+<span style="color: #0000ff;">plt.rcParams</span>[<span style="color: #00ffff;">'font.family'</span>] = <span style="color: #00ffff;">'Nimbus Sans'</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0d03838" class="outline-2">
+<h2 id="org0d03838">Simulation</h2>
+<div class="outline-text-2" id="text-org0d03838">
+</div>
+<div id="outline-container-org97a6e10" class="outline-3">
+<h3 id="org97a6e10">Generate the data</h3>
+<div class="outline-text-3" id="text-org97a6e10">
+<div class="org-src-container">
+<pre class="src src-shell">parallel --dry-run ./sim_data.sh {} /broad/hptmp/aksarkar/simulation/{1}/{#} :::: /broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/simulation/selected.genes ::: 1 2 3 ::: 0.05 0.1 0.15 0.2 0.3 ::: 1 3 5 ::: 5 10 20 30 ::: 1001 &gt;joblist
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -V -terse -sync n -j y -N sim -l <span style="color: #0000ff;">h_vmem</span>=2G -t 1
+<span style="color: #00ff00;">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/simulation/joblist
+<span style="color: #00ff00;">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl
+<span style="color: #00ff00;">pushd</span> /broad/compbio/ypp/gtex/analysis/fqtl-gtex/
+<span style="color: #00ff00;">exec</span> ${<span style="color: #0000ff;">tasks</span>[$<span style="color: #0000ff;">SGE_TASK_ID</span>]}
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org6562a8c" class="outline-2">
+<h2 id="gtex"><a id="org6562a8c"></a>Multi-tissue eQTL mapping</h2>
+<div class="outline-text-2" id="text-gtex">
+</div>
+<div id="outline-container-org6b00707" class="outline-3">
+<h3 id="org6b00707">Read the data</h3>
+<div class="outline-text-3" id="text-org6b00707">
+<p>
+Extract the GTEx univariate summary statistics.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -V -terse -j y
+cp /broad/compbio/data/GTEx/v6_GTEx_Analysis_2015-01-12/eqtl_data/GTEx_Analysis_2015-01-12_eGenesFiltered.tar.gz .
+mkdir -p egenes-filtered
+tar xf GTEx_Analysis_2015-01-12_eGenesFiltered.tar.gz -C egenes-filtered
+</pre>
+</div>
+
+<p>
+Extract the gene expression matrices to get sample sizes.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -V -terse -j y
+cp /broad/compbio/data/GTEx/v6_GTEx_Analysis_2015-01-12/eqtl_data/GTEx_Analysis_2015-01-12_eQTLInputFiles_geneLevelNormalizedExpressionMatrices.tar.gz .
+mkdir -p expr
+tar xf GTEx_Analysis_2015-01-12_eQTLInputFiles_geneLevelNormalizedExpressionMatrices.tar.gz -C expr
+parallel --halt=now,<span style="color: #0000ff;">fail</span>=1 -X gzip ::: expr/*.txt
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">qsub -cwd -V -terse -j y
+<span style="color: #00ff00;">function</span> <span style="color: #0000ff;">z</span> () { zcat $<span style="color: #0000ff;">1</span> | awk -vf=$(<span style="color: #ff00ff;">basename</span> $<span style="color: #0000ff;">1</span> _Analysis.expr.txt.gz) <span style="color: #00ffff;">'NR == 1 {n = NF - 1} END {print f, n, NR - 1; exit}'</span>; }
+<span style="color: #00ff00;">export</span> -f z
+parallel -j1 z ::: *.expr.txt.gz | awk <span style="color: #00ffff;">'BEGIN {print "tissue", "num_samples", "num_genes"} {print}'</span> &gt;sample-sizes.txt
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">sample_sizes</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/expr/sample-sizes.txt'</span>, sep=<span style="color: #00ffff;">' '</span>)
+</pre>
+</div>
+
+<p>
+Read the GTEx tissue colors.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">colors</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/data/tissues.colors.txt'</span>, header=<span style="color: #00ffff;">None</span>, sep=<span style="color: #00ffff;">'\t'</span>)
+</pre>
+</div>
+
+<p>
+Parse the <code>fqtl</code> results.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">def</span> <span style="color: #0000ff;">unpack</span>(X):
+  <span style="color: #00ff00;">if</span> <span style="color: #00ffff;">'|'</span> <span style="color: #00ff00;">in</span> X.iloc[3]:
+    <span style="color: #0000ff;">T</span> = pd.DataFrame(it.zip_longest(*X.<span style="color: #00ff00;">apply</span>(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">str</span>(x).split(<span style="color: #00ffff;">'|'</span>)).values, fillvalue=np.nan))
+    <span style="color: #0000ff;">T.columns</span> = X.index
+    T.fillna(T.iloc[0], inplace=<span style="color: #00ffff;">True</span>)
+    <span style="color: #00ff00;">return</span> T
+  <span style="color: #00ff00;">else</span>:
+    <span style="color: #00ff00;">return</span> X.to_frame().T
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">fqtl_res</span> = pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/chr{i}/50/combined.txt.gz'</span>, header=<span style="color: #00ffff;">None</span>, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
+<span style="color: #0000ff;">fqtl_res.columns</span> = [<span style="color: #00ffff;">'gene'</span>, <span style="color: #00ffff;">'chr'</span>, <span style="color: #00ffff;">'tss'</span>, <span style="color: #00ffff;">'tissue_idx'</span>, <span style="color: #00ffff;">'tissue_name'</span>, <span style="color: #00ffff;">'tissue_theta'</span>, <span style="color: #00ffff;">'tissue_se'</span>, <span style="color: #00ffff;">'tissue_lodds'</span>, <span style="color: #00ffff;">'snp_name'</span>, <span style="color: #00ffff;">'snp_theta'</span>, <span style="color: #00ffff;">'snp_se'</span>, <span style="color: #00ffff;">'snp_lodds'</span>, <span style="color: #00ffff;">'factor'</span>, <span style="color: #00ffff;">'pip'</span>]
+<span style="color: #0000ff;">fqtl_res</span> = pd.concat([unpack(x) <span style="color: #00ff00;">for</span> _, x <span style="color: #00ff00;">in</span> fqtl_res[fqtl_res[<span style="color: #00ffff;">'pip'</span>] == 0.95].iterrows()])
+fqtl_res.to_csv(<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, compression=<span style="color: #00ffff;">'gzip'</span>)
+</pre>
+</div>
+
+<p>
+Read the <code>fqtl</code> results.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">fqtl_res</span> = pd.read_csv(<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/result/stat/fqtl-combined.txt.gz'</span>, sep=<span style="color: #00ffff;">'\t'</span>, index_col=0)
+</pre>
+</div>
+
+<p>
+Count how many genes we retained at least one factor/loading pair for.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #00ff00;">len</span>(fqtl_res[<span style="color: #00ffff;">'gene'</span>].unique())
+</pre>
+</div>
+
+<pre class="example">
+20433
+
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org8946fc6" class="outline-3">
+<h3 id="egenes"><a id="org8946fc6"></a>Relationship of sample size to number of eGenes</h3>
+<div class="outline-text-3" id="text-egenes">
+<p>
+Read the univariate eGenes (\(q < 0.05\)).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">univariate_res</span> = {os.path.basename(f[:-24]): pd.read_csv(f, sep=<span style="color: #00ffff;">'\t'</span>) <span style="color: #00ff00;">for</span> f <span style="color: #00ff00;">in</span> glob.glob(<span style="color: #00ffff;">'/broad/hptmp/aksarkar/fqtl/egenes-filtered/*.filteredEGenes'</span>)}
+</pre>
+</div>
+
+<p>
+Read the list of genes for which we fit <code>fqtl</code> models.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">valid_genes</span> = pd.concat([pd.read_csv(f<span style="color: #00ffff;">'/broad/compbio/aksarkar/projects/gtex-fqtl/data/fqtl-{i}-valid.genes.txt'</span>, sep=<span style="color: #00ffff;">'\t'</span>, header=<span style="color: #00ffff;">None</span>) <span style="color: #00ff00;">for</span> i <span style="color: #00ff00;">in</span> <span style="color: #00ff00;">range</span>(1, 23)])
+</pre>
+</div>
+
+<p>
+Plot the relationship between eGenes and sample size.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span style="color: #0000ff;">fqtl_egenes</span> = fqtl_res.groupby(<span style="color: #00ffff;">'tissue_name'</span>)[<span style="color: #00ffff;">'gene'</span>].agg(<span style="color: #00ff00;">lambda</span> x: <span style="color: #00ff00;">len</span>(<span style="color: #00ff00;">set</span>(x)))
+<span style="color: #0000ff;">univariate_egenes</span> = pd.DataFrame.from_dict({k: univariate_res[k].shape[0] <span style="color: #00ff00;">for</span> k <span style="color: #00ff00;">in</span> univariate_res}, orient=<span style="color: #00ffff;">'index'</span>)
+<span style="color: #0000ff;">J</span> = (sample_sizes
+     .merge(colors, left_on=<span style="color: #00ffff;">'tissue'</span>, right_on=0)
+     .merge(fqtl_egenes, left_on=<span style="color: #00ffff;">'tissue'</span>, right_on=<span style="color: #00ffff;">'tissue_name'</span>)
+     .merge(univariate_egenes, left_on=<span style="color: #00ffff;">'tissue'</span>, right_index=<span style="color: #00ffff;">True</span>)
+     .rename({<span style="color: #00ffff;">'gene'</span>: <span style="color: #00ffff;">'fqtl'</span>, <span style="color: #00ffff;">'0_y'</span>: <span style="color: #00ffff;">'univariate'</span>, 1: <span style="color: #00ffff;">'color'</span>}, axis=<span style="color: #00ffff;">'columns'</span>))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">plt.clf()
+plt.gcf().set_size_inches(4, 3)
+<span style="color: #00ff00;">for</span> _, row <span style="color: #00ff00;">in</span> J.iterrows():
+  <span style="color: #0000ff;">base</span> = row[<span style="color: #00ffff;">'univariate'</span>]
+  <span style="color: #0000ff;">top</span> = row[<span style="color: #00ffff;">'fqtl'</span>]
+  plt.scatter(row[<span style="color: #00ffff;">'num_samples'</span>], base, c=f<span style="color: #00ffff;">'{row["color"]}'</span>, s=8, marker=<span style="color: #00ffff;">'.'</span>)
+  plt.scatter(row[<span style="color: #00ffff;">'num_samples'</span>], top, c=f<span style="color: #00ffff;">'{row["color"]}'</span>, s=8, marker=<span style="color: #00ffff;">'^'</span>)
+  plt.arrow(row[<span style="color: #00ffff;">'num_samples'</span>], base, 0, top - base, lw=1, color=f<span style="color: #00ffff;">'{row["color"]}'</span>)
+plt.xlabel(<span style="color: #00ffff;">'Sample size'</span>)
+plt.ylabel(<span style="color: #00ffff;">'Number of discovered eGenes'</span>)
+plt.ylim(0, 11000)
+plt.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/analysis.org/egenes-vs-sample-size.png" alt="egenes-vs-sample-size.png">
+</p>
+</div>
+
+<p>
+fQTL finds more eGenes in brain tissues, but appears to over-regularize
+tissues with larger sample sizes. This is in constrast to what we observe in
+applying fQTL to GTEx v8.
+</p>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Abhishek Sarkar</p>
+<p class="date">Created: 2020-04-04 Sat 13:10</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
