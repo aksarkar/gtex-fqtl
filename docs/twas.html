@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 13:26 -->
+<!-- 2020-04-04 Sat 18:57 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TWAS analysis</title>
+<title>TWAS pipeline</title>
 <meta name="generator" content="Org mode">
 <meta name="author" content="Abhishek Sarkar">
 <style type="text/css">
@@ -252,19 +252,23 @@ for the JavaScript code in this tag.
 </head>
 <body>
 <div id="content">
-<h1 class="title">TWAS analysis</h1>
+<h1 class="title">TWAS pipeline</h1>
 <div id="table-of-contents">
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
 <li><a href="#orged0fb56">Introduction</a></li>
 <li><a href="#orgbb95c24">Setup</a></li>
-<li><a href="#results">Results</a>
+<li><a href="#org574bc34">Data</a>
 <ul>
 <li><a href="#orgcafff56">Pre-process the summary statistics</a></li>
 <li><a href="#orgb348d59">AD replication data</a></li>
 <li><a href="#orga92d915">Prepare the genotype matrices</a></li>
-<li><a href="#org5d750fa">Develop TWAS implementation</a></li>
+</ul>
+</li>
+<li><a href="#results">Results</a>
+<ul>
+<li><a href="#orgc14368f">APOE example</a></li>
 <li><a href="#org7afd361">Run TWAS</a></li>
 </ul>
 </li>
@@ -276,7 +280,8 @@ for the JavaScript code in this tag.
 <h2 id="orged0fb56">Introduction</h2>
 <div class="outline-text-2" id="text-orged0fb56">
 <p>
-Here, we use the fitted <code>fqtl</code> models to perform TWAS.
+Here, we use the fitted <code>fqtl</code> models to perform TWAS of 114 traits
+(<a href="https://doi.org/10.1038/s41467-018-03621-1">Barbeira et al 2018</a>).
 </p>
 </div>
 </div>
@@ -307,20 +312,21 @@ Here, we use the fitted <code>fqtl</code> models to perform TWAS.
 <span class="org-keyword">import</span> matplotlib
 <span class="org-keyword">import</span> matplotlib.pyplot <span class="org-keyword">as</span> plt
 <span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'font.family'</span>] = <span class="org-string">'Nimbus Sans'</span>
+<span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'figure.facecolor'</span>] = <span class="org-string">'w'</span>
 </pre>
 </div>
 </div>
 </div>
 
-<div id="outline-container-org7554c3a" class="outline-2">
-<h2 id="results"><a id="org7554c3a"></a>Results</h2>
-<div class="outline-text-2" id="text-results">
+<div id="outline-container-org574bc34" class="outline-2">
+<h2 id="org574bc34">Data</h2>
+<div class="outline-text-2" id="text-org574bc34">
 </div>
 <div id="outline-container-orgcafff56" class="outline-3">
 <h3 id="orgcafff56">Pre-process the summary statistics</h3>
 <div class="outline-text-3" id="text-orgcafff56">
 <p>
-The GTEx consortium provided summary statistics in hg38. LiftOver back to
+The GTEx consortium provided summary statistics in hg38. <code>liftover</code> back to
 hg19 to combine with v6p models.
 </p>
 
@@ -361,7 +367,7 @@ gzip adgc2.txt
 </div>
 
 <p>
-The data is on hg37.
+The data is on hg19 (GHCr37).
 </p>
 
 <div class="org-src-container">
@@ -374,7 +380,8 @@ The publicly available data does not have \(z\)-scores or odds ratios.
 </p>
 
 <p>
-Download GWAX (<a href="https://www.nature.com/articles/ng.3766">https://www.nature.com/articles/ng.3766</a>)
+Download GWAX summary statistics
+(<a href="https://www.nature.com/articles/ng.3766">Liu et al. 2017</a>).
 </p>
 
 <div class="org-src-container">
@@ -384,7 +391,7 @@ curl -sOL <span class="org-string">"http://gwas-browser.nygenome.org/downloads/g
 </div>
 
 <p>
-The data is on hg37.
+The data is on hg19.
 </p>
 
 <div class="org-src-container">
@@ -436,12 +443,17 @@ awk -vn=$<span class="org-variable-name">SGE_TASK_LAST</span> -vi=$<span class="
 </div>
 </div>
 </div>
+</div>
 
-<div id="outline-container-org5d750fa" class="outline-3">
-<h3 id="org5d750fa">Develop TWAS implementation</h3>
-<div class="outline-text-3" id="text-org5d750fa">
+<div id="outline-container-org7554c3a" class="outline-2">
+<h2 id="results"><a id="org7554c3a"></a>Results</h2>
+<div class="outline-text-2" id="text-results">
+</div>
+<div id="outline-container-orgc14368f" class="outline-3">
+<h3 id="orgc14368f">APOE example</h3>
+<div class="outline-text-3" id="text-orgc14368f">
 <p>
-Extract the fqtl model for <i>APOE</i>
+Extract the <code>fqtl</code> model for <i>APOE</i>.
 </p>
 
 <div class="org-src-container">
@@ -460,6 +472,39 @@ Extract the fqtl model for <i>APOE</i>
 </pre>
 </div>
 
+<p>
+Look at the fitted <code>fqtl</code> loadings and factors.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">cm</span> = plt.get_cmap(<span class="org-string">'Dark2'</span>)
+plt.clf()
+plt.gcf().set_size_inches(7.5, 5)
+<span class="org-variable-name">query</span> = F.loc[:,keep]
+<span class="org-variable-name">grid</span> = np.arange(query.shape[0])
+plt.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
+plt.grid(axis=<span class="org-string">'x'</span>, color=<span class="org-string">'0.7'</span>)
+<span class="org-keyword">for</span> i, k <span class="org-keyword">in</span> <span class="org-builtin">enumerate</span>(query):
+  plt.bar(grid, query[k], width=0.9 , color=cm(i), label=f<span class="org-string">'Factor {i}'</span>, zorder=3)
+plt.legend()
+plt.xticks(grid, stat.index, rotation=90)
+plt.xlabel(<span class="org-string">'Tissue'</span>)
+plt.ylabel(<span class="org-string">'Factor weight'</span>)
+plt.title(<span class="org-string">'APOE'</span>)
+plt.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/twas.org/apoe-fqtl.png" alt="apoe-fqtl.png">
+</p>
+</div>
+
+<p>
+Load the <i>cis</i>-genotypes around <i>APOE</i>.
+</p>
+
 <div class="org-src-container">
 <pre class="src src-ipython"><span class="org-keyword">import</span> pyplink
 <span class="org-keyword">with</span> pyplink.PyPlink(f<span class="org-string">'/broad/hptmp/aksarkar/geno/{gene_id}'</span>) <span class="org-keyword">as</span> f:
@@ -472,16 +517,9 @@ Extract the fqtl model for <i>APOE</i>
 </pre>
 </div>
 
-<div class="org-src-container">
-<pre class="src src-ipython"><span class="org-variable-name">u</span>, <span class="org-variable-name">d</span>, <span class="org-variable-name">vt</span> = np.linalg.svd(x, full_matrices=<span class="org-constant">False</span>)
-(d &gt; 1e-4).<span class="org-builtin">sum</span>()
-</pre>
-</div>
-
-<pre class="example">
-450
-
-</pre>
+<p>
+Read the GWAS summary statistics.
+</p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span class="org-keyword">import</span> tabix
@@ -495,13 +533,17 @@ gwas_z.head()
 </div>
 
 <pre class="example">
-0          1          2      3  4       5      6
-0  chr1  206669789  206669790      A  G -1.2358  0.217
-1  chr1  206669957  206669958      A  G  0.3987  0.690
-2  chr1  206670168  206670169      C  G  0.3929  0.694
-3  chr1  206670257  206670258  GGGAA  G  0.0811  0.935
-4  chr1  206670322  206670323      A  G  0.6941  0.488
+0         1         2  3  4       5       6
+0  chr19  44409410  44409411  T  A  2.4210  0.0155
+1  chr19  44410383  44410384  A  G -0.1969  0.8440
+2  chr19  44410421  44410422  G  A -1.4283  0.1530
+3  chr19  44410613  44410614  A  G -1.6997  0.0892
+4  chr19  44410845  44410846  A  G -2.3529  0.0186
 </pre>
+
+<p>
+Merge the tissue-specific effect sizes and the GWAS summary statistics.
+</p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span class="org-variable-name">twas_data</span> = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index(<span class="org-string">'2_x'</span>)
@@ -510,14 +552,60 @@ twas_data.head(n=1)
 </div>
 
 <pre class="example">
-2  3  4   0_x        1_x 3_x 4_x     5_x     6  0_y  \
+2  3  4    0_x       1_x 3_x 4_x     5_x      6  0_y  \
 2_x
-206669958  206669958  A  G  chr1  206669957   A   G  0.3987  0.69    1
+44410422  44410422  G  A  chr19  44410421   G   A -1.4283  0.153   19
 
-1_y  2_y        3_y 4_y 5_y
+1_y  2_y       3_y 4_y 5_y
 2_x
-206669958  1_206669958_G_A_b37    0  206669958   A   G
+44410422  19_44410422_A_G_b37    0  44410422   G   A
 </pre>
+
+<p>
+Plot the TWAS loadings and the GWAS \(z\)-scores.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">gene_info</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/geno/manifest'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">cm</span> = plt.get_cmap(<span class="org-string">'Dark2'</span>)
+plt.clf()
+<span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(2, 1, sharex=<span class="org-constant">True</span>)
+fig.set_size_inches(7.5, 4)
+
+<span class="org-variable-name">query</span> = L.loc[:,keep].align(twas_data, axis=0, join=<span class="org-string">'inner'</span>)[0]
+<span class="org-variable-name">pos</span> = query.index / 1e6
+<span class="org-keyword">for</span> i, k <span class="org-keyword">in</span> <span class="org-builtin">enumerate</span>(query):
+  <span class="org-variable-name">keep_snps</span> = <span class="org-builtin">abs</span>(query[k]) &gt; 1e-3
+  ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f<span class="org-string">'Factor {i}'</span>, zorder=3)
+  ax[1].scatter(pos, twas_data[<span class="org-string">'5_x'</span>], s=1, color=<span class="org-string">'k'</span>, zorder=3, label=<span class="org-constant">None</span>)
+  <span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
+    <span class="org-keyword">for</span> t <span class="org-keyword">in</span> pos[keep_snps]:
+      a.axvline(t, lw=0.5, c=<span class="org-string">'0.85'</span>)
+<span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
+  a.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
+  a.axvline(gene_info.loc[gene_id,3] / 1e6, c=<span class="org-string">'b'</span>, lw=0.5)
+ax[0].set_ylabel(<span class="org-string">'Loading'</span>)
+ax[1].set_ylabel(<span class="org-string">'GWAS $z$-score'</span>)
+ax[1].set_xlabel(<span class="org-string">'Genomic position (MB)'</span>)
+ax[0].set_title(<span class="org-string">'APOE'</span>)
+fig.legend(frameon=<span class="org-constant">False</span>, markerscale=2, handletextpad=0, loc=<span class="org-string">'center left'</span>, bbox_to_anchor=(1, .5))
+fig.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/twas.org/apoe-fqtl-l.png" alt="apoe-fqtl-l.png">
+</p>
+</div>
+
+<p>
+Estimate the TWAS \(z\)-score.
+</p>
 
 <div class="org-src-container">
 <pre class="src src-ipython"><span class="org-variable-name">Bs</span> = B.loc[twas_data[<span class="org-string">'3_y'</span>]]
@@ -526,9 +614,53 @@ twas_data.head(n=1)
 <span class="org-variable-name">z</span> = z.loc[~z.index.duplicated(keep=<span class="org-string">'first'</span>)]
 <span class="org-variable-name">X</span> = x.loc[:,twas_data[<span class="org-string">'3_y'</span>]]
 <span class="org-variable-name">X</span> = X.loc[:,~X.columns.duplicated(keep=<span class="org-string">'first'</span>)]
-<span class="org-variable-name">R</span> = X.T.dot(X) / x.shape[0]
+<span class="org-variable-name">u</span>, <span class="org-variable-name">d</span>, <span class="org-variable-name">vt</span> = np.linalg.svd(X, full_matrices=<span class="org-constant">False</span>)
+<span class="org-variable-name">d</span>[d &lt; 1e-4] = 0
+<span class="org-variable-name">R</span> = pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt) / X.shape[0], index=X.columns, columns=X.columns)
+<span class="org-variable-name">stat</span> = z.dot(Bs) / np.sqrt(np.diag(Bs.T.dot(R).dot(Bs)))
 </pre>
 </div>
+
+<div class="org-src-container">
+<pre class="src src-ipython">plt.clf()
+plt.gcf().set_size_inches(7.5, 5)
+<span class="org-variable-name">grid</span> = np.arange(stat.shape[0])
+plt.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
+plt.grid(axis=<span class="org-string">'x'</span>, color=<span class="org-string">'0.7'</span>)
+plt.bar(grid, stat, width=.9, color=<span class="org-string">'k'</span>, zorder=3)
+plt.xticks(grid, stat.index, rotation=90)
+plt.xlabel(<span class="org-string">'Tissue'</span>)
+plt.ylabel(<span class="org-string">'$z$-score'</span>)
+plt.title(<span class="org-string">'APOE'</span>)
+plt.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/twas.org/apoe.png" alt="apoe.png">
+</p>
+</div>
+
+<p>
+We expect an association between <i>APOE</i> gene expression in brain and AD;
+however, we also find significant associations in several other
+tissues. These associations appear to be driven by coding variants in <i>APOE</i>
+which are predicted to have an effect in tissues other than brain. This
+result could be expected, following the argument that strong effects on gene
+expression of disease relevant tissues should not be tolerated by natural
+selection, while strong effects in irrelevant tissues could be tolerated
+(<a href="https://www.biorxiv.org/content/10.1101/459123v1">Wang et al. 2018</a>).
+</p>
+</div>
+</div>
+
+<div id="outline-container-org7afd361" class="outline-3">
+<h3 id="org7afd361">Run TWAS</h3>
+<div class="outline-text-3" id="text-org7afd361">
+<p>
+Run one chunk of the pipeline.
+</p>
 
 <div class="org-src-container">
 <pre class="src src-shell">mkdir -p tasks
@@ -542,12 +674,11 @@ awk <span class="org-string">'{print &gt;"/broad/hptmp/aksarkar/tasks/chunk-" in
 python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
 </pre>
 </div>
-</div>
-</div>
 
-<div id="outline-container-org7afd361" class="outline-3">
-<h3 id="org7afd361">Run TWAS</h3>
-<div class="outline-text-3" id="text-org7afd361">
+<p>
+Run the entire pipeline.
+</p>
+
 <div class="org-src-container">
 <pre class="src src-shell">find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name <span class="org-string">"*.bed.gz"</span> | parallel --dry-run <span class="org-string">'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}'</span> &gt;/broad/hptmp/aksarkar/twas/joblist
 </pre>
@@ -566,7 +697,7 @@ python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 13:26</p>
+<p class="date">Created: 2020-04-04 Sat 18:57</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

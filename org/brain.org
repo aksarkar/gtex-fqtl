@@ -1,4 +1,4 @@
-#+TITLE: [[file:brain.org][AD brain-specific TWAS analysis]]
+#+TITLE: AD brain-specific TWAS analysis
 #+SETUPFILE: setup.org
 
 * Introduction
@@ -96,7 +96,7 @@
    #+RESULTS:
 
 * Results
-** AD brain-specific TWAS
+** fqtl associations
 
    Read the results.
 

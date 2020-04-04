@@ -1,9 +1,10 @@
-#+TITLE: TWAS analysis
+#+TITLE: TWAS pipeline
 #+SETUPFILE: setup.org
 
 * Introduction
 
-  Here, we use the fitted ~fqtl~ models to perform TWAS.
+  Here, we use the fitted ~fqtl~ models to perform TWAS of 114 traits
+  ([[https://doi.org/10.1038/s41467-018-03621-1][Barbeira et al 2018]]).
 
 * Setup
 
@@ -25,7 +26,9 @@
   #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
 
   #+RESULTS:
-  : 16405971
+  :RESULTS:
+  16537053
+  :END:
 
   #+NAME: imports
   #+BEGIN_SRC ipython
@@ -59,20 +62,18 @@
     import matplotlib
     import matplotlib.pyplot as plt
     plt.rcParams['font.family'] = 'Nimbus Sans'
+    plt.rcParams['figure.facecolor'] = 'w'
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
-  # Out[3]:
+  # Out[40]:
   :END:
 
-* Results
-  :PROPERTIES:
-  :CUSTOM_ID: results
-  :END:
+* Data
 ** Pre-process the summary statistics
 
-   The GTEx consortium provided summary statistics in hg38. LiftOver back to
+   The GTEx consortium provided summary statistics in hg38. ~liftover~ back to
    hg19 to combine with v6p models.
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
@@ -101,74 +102,75 @@
 
 ** AD replication data
 
-  Download ADGC phase 2 (https://www.niagads.org/datasets/ng00076)
+   Download ADGC phase 2 (https://www.niagads.org/datasets/ng00076)
 
-  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-    curl -sL "https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&type=field_collection_item&id=100&force=" -o adgc2.txt
-    gzip adgc2.txt
-  #+END_SRC
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     curl -sL "https://www.niagads.org/system/tdf/public_docs/ADGC2_ModelB_METAL_COMMON.InvVar.results.formatted_p-value_only.txt?file=1&type=field_collection_item&id=100&force=" -o adgc2.txt
+     gzip adgc2.txt
+   #+END_SRC
 
-  #+RESULTS:
+   #+RESULTS:
 
-  The data is on hg37.
+   The data is on hg19 (GHCr37).
 
-  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
-    zcat adgc2.txt.gz | awk 'NR == 2 {split($1, a, ":"); print a[2]; exit}' | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
-  #+END_SRC
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar
+     zcat adgc2.txt.gz | awk 'NR == 2 {split($1, a, ":"); print a[2]; exit}' | xargs -I{} zgrep -wm1 {} /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+   #+END_SRC
 
-  #+RESULTS:
-  | chr1 | 100000012 | 100000012 | rs10875231 |   | + | 224514623 | GRCh37.p5,reference | G/T | genomic | snp | byFrequency |   |   | unknown | exact | 2 |   | 14 | 1000GENOMES,ABI,BCM-HGSC-SUB,BGI,BUSHMAN,COMPLETE_GENOMICS,CSHL-HAPMAP,ENSEMBL,GMI,HGSV,ILLUMINA-UK,PERLEGEN,PJP,SC_SNP | 1 | T | 2184 | 0.3086 | submitter_linkout,1,assembly_specific,MAF>5%_in_1+population,MAF>5%_in_all_population,double_hit_by_Mullikin |   | 120 | 137 | unknown |
+   #+RESULTS:
+   | chr1 | 100000012 | 100000012 | rs10875231 |   | + | 224514623 | GRCh37.p5,reference | G/T | genomic | snp | byFrequency |   |   | unknown | exact | 2 |   | 14 | 1000GENOMES,ABI,BCM-HGSC-SUB,BGI,BUSHMAN,COMPLETE_GENOMICS,CSHL-HAPMAP,ENSEMBL,GMI,HGSV,ILLUMINA-UK,PERLEGEN,PJP,SC_SNP | 1 | T | 2184 | 0.3086 | submitter_linkout,1,assembly_specific,MAF>5%_in_1+population,MAF>5%_in_all_population,double_hit_by_Mullikin |   | 120 | 137 | unknown |
 
-  The publicly available data does not have \(z\)-scores or odds ratios.
+   The publicly available data does not have \(z\)-scores or odds ratios.
 
-  Download GWAX (https://www.nature.com/articles/ng.3766)
+   Download GWAX summary statistics
+   ([[https://www.nature.com/articles/ng.3766][Liu et al. 2017]]).
 
-  #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-    qsub -terse -cwd -V -j y -sync n
-    curl -sOL "http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"
-  #+END_SRC
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+     qsub -terse -cwd -V -j y -sync n
+     curl -sOL "http://gwas-browser.nygenome.org/downloads/gwas-browser/AD.gwax.assoc.gz"
+   #+END_SRC
 
-  #+RESULTS:
-  : 16367576
+   #+RESULTS:
+   : 16367576
 
-  The data is on hg37.
+   The data is on hg19.
 
-  #+BEGIN_SRC shell
-    zgrep -wm1 rs144155419 /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
-  #+END_SRC
+   #+BEGIN_SRC shell
+     zgrep -wm1 rs144155419 /broad/compbio/lward/incoming/dbSNP/hg19_b137/bed_chr_1.txt.gz
+   #+END_SRC
 
-  #+RESULTS:
-  | chr1 | 717587 | 717587 | rs144155419 |   | + | 224514624 | GRCh37.p5,reference | A/G | genomic | snp | by1000G | 0 | 0 | unknown | exact | 2 |   | 1 | 1000GENOMES | 1 | A | 2184 | 0.0064 | 1,assembly_specific |   | 134 | 134 | unknown |
+   #+RESULTS:
+   | chr1 | 717587 | 717587 | rs144155419 |   | + | 224514624 | GRCh37.p5,reference | A/G | genomic | snp | by1000G | 0 | 0 | unknown | exact | 2 |   | 1 | 1000GENOMES | 1 | A | 2184 | 0.0064 | 1,assembly_specific |   | 134 | 134 | unknown |
 
-  Convert \(p\)-values to \(z\)-scores and format the data.
+   Convert \(p\)-values to \(z\)-scores and format the data.
 
-  #+BEGIN_SRC ipython :async t
-    data = pd.read_csv('/broad/hptmp/aksarkar/AD.gwax.assoc.gz', sep=' ')
-    data['chr'] = data['CHR'].apply(lambda x: f'chr{x}')
-    data['start'] = data['BP']
-    # Important: we removed indels from GTEx
-    data['end'] = data.apply(lambda x: x['BP'] if len(x['A1']) == len(x['A2']) == 1 else np.nan, axis=1).astype('Int64')
-    data['zscore'] = np.sqrt(st.chi2(1).sf(data['P'])) * np.sign(np.log(data['OR']))
-    data['pval'] = data['P']
-    (data[['chr', 'start', 'end', 'A1', 'A2', 'zscore', 'pval']]
-     .dropna()
-     .to_csv('/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed', index=None, header=None, sep='\t'))
-  #+END_SRC
+   #+BEGIN_SRC ipython :async t
+     data = pd.read_csv('/broad/hptmp/aksarkar/AD.gwax.assoc.gz', sep=' ')
+     data['chr'] = data['CHR'].apply(lambda x: f'chr{x}')
+     data['start'] = data['BP']
+     # Important: we removed indels from GTEx
+     data['end'] = data.apply(lambda x: x['BP'] if len(x['A1']) == len(x['A2']) == 1 else np.nan, axis=1).astype('Int64')
+     data['zscore'] = np.sqrt(st.chi2(1).sf(data['P'])) * np.sign(np.log(data['OR']))
+     data['pval'] = data['P']
+     (data[['chr', 'start', 'end', 'A1', 'A2', 'zscore', 'pval']]
+      .dropna()
+      .to_csv('/broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed', index=None, header=None, sep='\t'))
+   #+END_SRC
 
-  #+RESULTS:
-  :RESULTS:
-  # Out[4]:
-  :END:
+   #+RESULTS:
+   :RESULTS:
+   # Out[4]:
+   :END:
 
-  #+BEGIN_SRC shell
-    qsub -cwd -terse -V -sync n -j y -N tabix -S /bin/bash
-    set -e
-    bgzip /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed
-    tabix /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed.gz
-  #+END_SRC
+   #+BEGIN_SRC shell
+     qsub -cwd -terse -V -sync n -j y -N tabix -S /bin/bash
+     set -e
+     bgzip /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed
+     tabix /broad/hptmp/aksarkar/gtex-gwas-hg19/ad-gwax-hg37.bed.gz
+   #+END_SRC
 
-  #+RESULTS:
-  : 16367736
+   #+RESULTS:
+   : 16367736
 
 ** Prepare the genotype matrices
 
@@ -184,9 +186,13 @@
    #+RESULTS:
    : 16367776.1-100:1
 
-** Develop TWAS implementation
+* Results
+  :PROPERTIES:
+  :CUSTOM_ID: results
+  :END:
+** APOE example
 
-   Extract the fqtl model for /APOE/
+   Extract the ~fqtl~ model for /APOE/.
 
    #+BEGIN_SRC ipython
      gene_id = 49282
@@ -205,8 +211,36 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[55]:
+   # Out[96]:
    :END:
+
+   Look at the fitted ~fqtl~ loadings and factors.
+
+   #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-fqtl.png
+     cm = plt.get_cmap('Dark2')
+     plt.clf()
+     plt.gcf().set_size_inches(7.5, 5)
+     query = F.loc[:,keep]
+     grid = np.arange(query.shape[0])
+     plt.axhline(y=0, lw=1, color='0.7')
+     plt.grid(axis='x', color='0.7')
+     for i, k in enumerate(query):
+       plt.bar(grid, query[k], width=0.9 , color=cm(i), label=f'Factor {i}', zorder=3)
+     plt.legend()
+     plt.xticks(grid, stat.index, rotation=90)
+     plt.xlabel('Tissue')
+     plt.ylabel('Factor weight')
+     plt.title('APOE')
+     plt.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[59]:
+   [[file:figure/twas.org/apoe-fqtl.png]]
+   :END:
+
+   Load the /cis/-genotypes around /APOE/.
 
    #+BEGIN_SRC ipython
      import pyplink
@@ -221,19 +255,10 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[19]:
+   # Out[5]:
    :END:
 
-   #+BEGIN_SRC ipython
-     u, d, vt = np.linalg.svd(x, full_matrices=False)
-     (d > 1e-4).sum()
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   # Out[29]:
-   : 450
-   :END:
+   Read the GWAS summary statistics.
 
    #+BEGIN_SRC ipython
      import tabix
@@ -247,16 +272,18 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[22]:
+   # Out[7]:
    #+BEGIN_EXAMPLE
-     0          1          2      3  4       5      6
-     0  chr1  206669789  206669790      A  G -1.2358  0.217
-     1  chr1  206669957  206669958      A  G  0.3987  0.690
-     2  chr1  206670168  206670169      C  G  0.3929  0.694
-     3  chr1  206670257  206670258  GGGAA  G  0.0811  0.935
-     4  chr1  206670322  206670323      A  G  0.6941  0.488
+     0         1         2  3  4       5       6
+     0  chr19  44409410  44409411  T  A  2.4210  0.0155
+     1  chr19  44410383  44410384  A  G -0.1969  0.8440
+     2  chr19  44410421  44410422  G  A -1.4283  0.1530
+     3  chr19  44410613  44410614  A  G -1.6997  0.0892
+     4  chr19  44410845  44410846  A  G -2.3529  0.0186
    #+END_EXAMPLE
    :END:
+
+   Merge the tissue-specific effect sizes and the GWAS summary statistics.
 
    #+BEGIN_SRC ipython
      twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
@@ -265,18 +292,63 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[23]:
+   # Out[8]:
    #+BEGIN_EXAMPLE
-     2  3  4   0_x        1_x 3_x 4_x     5_x     6  0_y  \
+     2  3  4    0_x       1_x 3_x 4_x     5_x      6  0_y  \
      2_x
-     206669958  206669958  A  G  chr1  206669957   A   G  0.3987  0.69    1
+     44410422  44410422  G  A  chr19  44410421   G   A -1.4283  0.153   19
 
-     1_y  2_y        3_y 4_y 5_y
+     1_y  2_y       3_y 4_y 5_y
      2_x
-     206669958  1_206669958_G_A_b37    0  206669958   A   G
+     44410422  19_44410422_A_G_b37    0  44410422   G   A
    #+END_EXAMPLE
    :END:
 
+   Plot the TWAS loadings and the GWAS \(z\)-scores.
+
+   #+BEGIN_SRC ipython
+     gene_info = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[121]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-fqtl-l.png
+     cm = plt.get_cmap('Dark2')
+     plt.clf()
+     fig, ax = plt.subplots(2, 1, sharex=True)
+     fig.set_size_inches(7.5, 4)
+
+     query = L.loc[:,keep].align(twas_data, axis=0, join='inner')[0]
+     pos = query.index / 1e6
+     for i, k in enumerate(query):
+       keep_snps = abs(query[k]) > 1e-3
+       ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f'Factor {i}', zorder=3)
+       ax[1].scatter(pos, twas_data['5_x'], s=1, color='k', zorder=3, label=None)
+       for a in ax:
+         for t in pos[keep_snps]:
+           a.axvline(t, lw=0.5, c='0.85')
+     for a in ax:
+       a.axhline(y=0, lw=1, color='0.7')
+       a.axvline(gene_info.loc[gene_id,3] / 1e6, c='b', lw=0.5)
+     ax[0].set_ylabel('Loading')
+     ax[1].set_ylabel('GWAS $z$-score')
+     ax[1].set_xlabel('Genomic position (MB)')
+     ax[0].set_title('APOE')
+     fig.legend(frameon=False, markerscale=2, handletextpad=0, loc='center left', bbox_to_anchor=(1, .5))
+     fig.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[173]:
+   [[file:figure/twas.org/apoe-fqtl-l.png]]
+   :END:
+
+   Estimate the TWAS \(z\)-score.
+   
    #+BEGIN_SRC ipython
      Bs = B.loc[twas_data['3_y']]
      Bs = Bs.loc[~Bs.index.duplicated(keep='first')]
@@ -284,13 +356,49 @@
      z = z.loc[~z.index.duplicated(keep='first')]
      X = x.loc[:,twas_data['3_y']]
      X = X.loc[:,~X.columns.duplicated(keep='first')]
-     R = X.T.dot(X) / x.shape[0]
+     u, d, vt = np.linalg.svd(X, full_matrices=False)
+     d[d < 1e-4] = 0
+     R = pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt) / X.shape[0], index=X.columns, columns=X.columns)
+     stat = z.dot(Bs) / np.sqrt(np.diag(Bs.T.dot(R).dot(Bs)))
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[24]:
+   # Out[88]:
    :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe.png
+     plt.clf()
+     plt.gcf().set_size_inches(7.5, 5)
+     grid = np.arange(stat.shape[0])
+     plt.axhline(y=0, lw=1, color='0.7')
+     plt.grid(axis='x', color='0.7')
+     plt.bar(grid, stat, width=.9, color='k', zorder=3)
+     plt.xticks(grid, stat.index, rotation=90)
+     plt.xlabel('Tissue')
+     plt.ylabel('$z$-score')
+     plt.title('APOE')
+     plt.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[52]:
+   [[file:figure/twas.org/apoe.png]]
+   :END:
+
+   We expect an association between /APOE/ gene expression in brain and AD;
+   however, we also find significant associations in several other
+   tissues. These associations appear to be driven by coding variants in /APOE/
+   which are predicted to have an effect in tissues other than brain. This
+   result could be expected, following the argument that strong effects on gene
+   expression of disease relevant tissues should not be tolerated by natural
+   selection, while strong effects in irrelevant tissues could be tolerated
+   ([[https://www.biorxiv.org/content/10.1101/459123v1][Wang et al. 2018]]).
+
+** Run TWAS
+
+   Run one chunk of the pipeline.
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
      mkdir -p tasks
@@ -308,7 +416,7 @@
    #+RESULTS:
    : 11926870
 
-** Run TWAS
+   Run the entire pipeline.
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
      find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" | parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}' >/broad/hptmp/aksarkar/twas/joblist
@@ -324,5 +432,7 @@
    #+END_SRC
 
    #+RESULTS:
-   : 16367852.1-2:1
+   :RESULTS:
+   16537379.1-2:1
+   :END:
 
