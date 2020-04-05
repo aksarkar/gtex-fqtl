@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 18:57 -->
+<!-- 2020-04-04 Sat 21:48 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TWAS pipeline</title>
@@ -617,22 +617,73 @@ Estimate the TWAS \(z\)-score.
 <span class="org-variable-name">u</span>, <span class="org-variable-name">d</span>, <span class="org-variable-name">vt</span> = np.linalg.svd(X, full_matrices=<span class="org-constant">False</span>)
 <span class="org-variable-name">d</span>[d &lt; 1e-4] = 0
 <span class="org-variable-name">R</span> = pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt) / X.shape[0], index=X.columns, columns=X.columns)
-<span class="org-variable-name">stat</span> = z.dot(Bs) / np.sqrt(np.diag(Bs.T.dot(R).dot(Bs)))
+</pre>
+</div>
+
+<p>
+Compare the permutation null distribution of the TWAS statistic to the
+theoretical null.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">np.random.seed(1)
+<span class="org-variable-name">n_perm</span> = 100000
+<span class="org-variable-name">stat</span> = z @ Bs
+<span class="org-variable-name">B</span> = []
+<span class="org-variable-name">z_copy</span> = z.values.copy()
+<span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_perm):
+  np.random.shuffle(z_copy)
+  B.append(z_copy @ Bs)
+<span class="org-variable-name">B</span> = np.array(B).squeeze()
 </pre>
 </div>
 
 <div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">perm_logp</span> = -np.log10((np.square(stat.values).reshape(1, -1) &lt; np.square(B)).mean(axis=0))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">tis</span> = [<span class="org-string">'Whole_Blood'</span>, <span class="org-string">'Lung'</span>, <span class="org-string">'Skin_Sun_Exposed_Lower_leg'</span>, <span class="org-string">'Brain_Caudate_basal_ganglia'</span>]
+<span class="org-variable-name">idx</span> = stat.index.isin(tis)
+plt.clf()
+<span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(1, 4)
+fig.set_size_inches(8, 2.25)
+
+<span class="org-keyword">for</span> a, b, s_, v_, t <span class="org-keyword">in</span> <span class="org-builtin">zip</span>(ax, B[:,idx], stat.loc[idx], v[idx], stat.index[idx]):
+  a.hist(b, bins=10, density=<span class="org-constant">True</span>, color=<span class="org-string">'0.7'</span>)
+  a.axvline(s_, lw=1, c=<span class="org-string">'r'</span>)
+  a.set_title(<span class="org-string">' '</span>.join(t.split(<span class="org-string">'_'</span>)[:2]))
+  a.set_xlim(-6, 6)
+  a.set_xlabel(<span class="org-string">'TWAS statistic'</span>)
+ax[0].set_ylabel(<span class="org-string">'Density'</span>)
+fig.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/twas.org/apoe-twas-null.png" alt="apoe-twas-null.png">
+</p>
+</div>
+
+<div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
-plt.gcf().set_size_inches(7.5, 5)
+<span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(2, 1, sharex=<span class="org-constant">True</span>)
+fig.set_size_inches(8, 6)
 <span class="org-variable-name">grid</span> = np.arange(stat.shape[0])
-plt.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
-plt.grid(axis=<span class="org-string">'x'</span>, color=<span class="org-string">'0.7'</span>)
-plt.bar(grid, stat, width=.9, color=<span class="org-string">'k'</span>, zorder=3)
-plt.xticks(grid, stat.index, rotation=90)
-plt.xlabel(<span class="org-string">'Tissue'</span>)
-plt.ylabel(<span class="org-string">'$z$-score'</span>)
-plt.title(<span class="org-string">'APOE'</span>)
-plt.tight_layout()
+ax[0].bar(grid, stat, width=.9, color=<span class="org-string">'k'</span>, zorder=3)
+ax[0].set_ylabel(<span class="org-string">'TWAS statistic'</span>)
+ax[1].bar(grid, perm_logp, width=.9, color=<span class="org-string">'k'</span>, zorder=3)
+<span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
+  a.set_xticks(grid)
+  a.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
+  a.grid(axis=<span class="org-string">'x'</span>, color=<span class="org-string">'0.7'</span>)
+ax[0].set_title(<span class="org-string">'APOE'</span>)
+ax[1].set_xticklabels(stat.index, rotation=90)
+ax[1].set_xlabel(<span class="org-string">'Tissue'</span>)
+ax[1].set_ylabel(r<span class="org-string">'$-\log_{10}(p)$'</span>)
+fig.tight_layout()
 </pre>
 </div>
 
@@ -697,7 +748,7 @@ Run the entire pipeline.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 18:57</p>
+<p class="date">Created: 2020-04-04 Sat 21:48</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

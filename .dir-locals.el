@@ -13,4 +13,5 @@
                                                                          :recursive t
                                                                          ))
                                           ("fqtl" . (:components ("fqtl-org" "fqtl-fig")))))
-              )))
+              ))
+ (python-mode . ((python-indent-offset 2))))

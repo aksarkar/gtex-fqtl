@@ -27,7 +27,7 @@
 
   #+RESULTS:
   :RESULTS:
-  16537053
+  16542588
   :END:
 
   #+NAME: imports
@@ -67,7 +67,7 @@
 
   #+RESULTS:
   :RESULTS:
-  # Out[40]:
+  # Out[3]:
   :END:
 
 * Data
@@ -211,7 +211,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[96]:
+   # Out[4]:
    :END:
 
    Look at the fitted ~fqtl~ loadings and factors.
@@ -272,7 +272,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[7]:
+   # Out[6]:
    #+BEGIN_EXAMPLE
      0         1         2  3  4       5       6
      0  chr19  44409410  44409411  T  A  2.4210  0.0155
@@ -292,7 +292,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[8]:
+   # Out[7]:
    #+BEGIN_EXAMPLE
      2  3  4    0_x       1_x 3_x 4_x     5_x      6  0_y  \
      2_x
@@ -312,7 +312,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[121]:
+   # Out[8]:
    :END:
 
    #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-fqtl-l.png
@@ -359,31 +359,87 @@
      u, d, vt = np.linalg.svd(X, full_matrices=False)
      d[d < 1e-4] = 0
      R = pd.DataFrame(vt.T.dot(np.diag(np.square(d))).dot(vt) / X.shape[0], index=X.columns, columns=X.columns)
-     stat = z.dot(Bs) / np.sqrt(np.diag(Bs.T.dot(R).dot(Bs)))
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[88]:
+   # Out[10]:
+   :END:
+
+   Compare the permutation null distribution of the TWAS statistic to the
+   theoretical null.
+
+   #+BEGIN_SRC ipython :async t
+     np.random.seed(1)
+     n_perm = 100000
+     stat = z @ Bs
+     B = []
+     z_copy = z.values.copy()
+     for i in range(n_perm):
+       np.random.shuffle(z_copy)
+       B.append(z_copy @ Bs)
+     B = np.array(B).squeeze()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[126]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     perm_logp = -np.log10((np.square(stat.values).reshape(1, -1) < np.square(B)).mean(axis=0))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[174]:
+   :END:
+
+   #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-twas-null.png
+     tis = ['Whole_Blood', 'Lung', 'Skin_Sun_Exposed_Lower_leg', 'Brain_Caudate_basal_ganglia']
+     idx = stat.index.isin(tis)
+     plt.clf()
+     fig, ax = plt.subplots(1, 4)
+     fig.set_size_inches(8, 2.25)
+
+     for a, b, s_, v_, t in zip(ax, B[:,idx], stat.loc[idx], v[idx], stat.index[idx]):
+       a.hist(b, bins=10, density=True, color='0.7')
+       a.axvline(s_, lw=1, c='r')
+       a.set_title(' '.join(t.split('_')[:2]))
+       a.set_xlim(-6, 6)
+       a.set_xlabel('TWAS statistic')
+     ax[0].set_ylabel('Density')
+     fig.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[127]:
+   [[file:figure/twas.org/apoe-twas-null.png]]
    :END:
 
    #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe.png
      plt.clf()
-     plt.gcf().set_size_inches(7.5, 5)
+     fig, ax = plt.subplots(2, 1, sharex=True)
+     fig.set_size_inches(8, 6)
      grid = np.arange(stat.shape[0])
-     plt.axhline(y=0, lw=1, color='0.7')
-     plt.grid(axis='x', color='0.7')
-     plt.bar(grid, stat, width=.9, color='k', zorder=3)
-     plt.xticks(grid, stat.index, rotation=90)
-     plt.xlabel('Tissue')
-     plt.ylabel('$z$-score')
-     plt.title('APOE')
-     plt.tight_layout()
+     ax[0].bar(grid, stat, width=.9, color='k', zorder=3)
+     ax[0].set_ylabel('TWAS statistic')
+     ax[1].bar(grid, perm_logp, width=.9, color='k', zorder=3)
+     for a in ax:
+       a.set_xticks(grid)
+       a.axhline(y=0, lw=1, color='0.7')
+       a.grid(axis='x', color='0.7')
+     ax[0].set_title('APOE')
+     ax[1].set_xticklabels(stat.index, rotation=90)
+     ax[1].set_xlabel('Tissue')
+     ax[1].set_ylabel(r'$-\log_{10}(p)$')
+     fig.tight_layout()
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[52]:
+   # Out[179]:
    [[file:figure/twas.org/apoe.png]]
    :END:
 
