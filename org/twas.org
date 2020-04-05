@@ -4,7 +4,18 @@
 * Introduction
 
   Here, we use the fitted ~fqtl~ models to perform TWAS of 114 traits
-  ([[https://doi.org/10.1038/s41467-018-03621-1][Barbeira et al 2018]]).
+  ([[https://doi.org/10.1038/s41467-018-03621-1][Barbeira et al 2018]]).\(
+  \DeclareMathOperator\N{N}
+  \newcommand\mU{\mathbf{U}}
+  \newcommand\mc{\mathbf{V}}
+  \newcommand\md{\mathbf{D}}
+  \newcommand\mi{\mathbf{I}}
+  \newcommand\mx{\mathbf{X}}
+  \newcommand\vb{\mathbf{b}_t}
+  \newcommand\veta{\boldsymbol{\eta}_t}
+  \newcommand\vy{\mathbf{y}}
+  \newcommand\vz{\mathbf{z}}
+  \)
 
 * Setup
 
@@ -27,7 +38,7 @@
 
   #+RESULTS:
   :RESULTS:
-  16542588
+  16551048
   :END:
 
   #+NAME: imports
@@ -38,6 +49,7 @@
     import numpy as np
     import pandas as pd
     import scipy.linalg as sl
+    import scipy.sparse as ss
     import scipy.special as sp
     import scipy.stats as st
   #+END_SRC
@@ -199,8 +211,10 @@
      prefix = f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'
      snp_annot = pd.read_csv(f'{prefix}/fqtl.snp.info.gz', sep='\t', header=None)
      snp_lodds = pd.read_csv(f'{prefix}/fqtl.snp.lodds.txt.gz', sep='\t', header=None)
+     snp_lodds.index = snp_annot[3]
      tis_annot = pd.read_csv(f'{prefix}/fqtl.tis.info.gz', sep='\t', header=None, index_col=0)
      tis_lodds = pd.read_csv(f'{prefix}/fqtl.tis.lodds.txt.gz', sep='\t', header=None)
+     tis_lodds.index = tis_annot[1].apply(lambda x: x.rsplit('_', maxsplit=1)[0])
      keep = (sp.expit(snp_lodds) > .95).any(axis=0)
      L = pd.read_csv(f'{prefix}/fqtl.snp.theta.txt.gz', sep='\t', header=None)
      L.index = snp_annot[3]
@@ -319,12 +333,13 @@
      cm = plt.get_cmap('Dark2')
      plt.clf()
      fig, ax = plt.subplots(2, 1, sharex=True)
-     fig.set_size_inches(7.5, 4)
+     fig.set_size_inches(6, 3.5)
 
      query = L.loc[:,keep].align(twas_data, axis=0, join='inner')[0]
+     query_lodds = snp_lodds.loc[:,keep].align(twas_data, axis=0, join='inner')[0]
      pos = query.index / 1e6
      for i, k in enumerate(query):
-       keep_snps = abs(query[k]) > 1e-3
+       keep_snps = query_lodds[k] > sp.logit(.95)
        ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f'Factor {i}', zorder=3)
        ax[1].scatter(pos, twas_data['5_x'], s=1, color='k', zorder=3, label=None)
        for a in ax:
@@ -334,24 +349,25 @@
        a.axhline(y=0, lw=1, color='0.7')
        a.axvline(gene_info.loc[gene_id,3] / 1e6, c='b', lw=0.5)
      ax[0].set_ylabel('Loading')
-     ax[1].set_ylabel('GWAS $z$-score')
+     ax[1].set_ylabel('AD GWAS $z$-score')
      ax[1].set_xlabel('Genomic position (MB)')
      ax[0].set_title('APOE')
-     fig.legend(frameon=False, markerscale=2, handletextpad=0, loc='center left', bbox_to_anchor=(1, .5))
+     fig.legend(frameon=False, markerscale=2, handletextpad=0, loc='center left', bbox_to_anchor=(.95, .5))
      fig.tight_layout()
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[173]:
+   # Out[22]:
    [[file:figure/twas.org/apoe-fqtl-l.png]]
    :END:
 
-   Estimate the TWAS \(z\)-score.
+   Align the ~fqtl~ model and the GWAS summary statistics.
    
    #+BEGIN_SRC ipython
-     Bs = B.loc[twas_data['3_y']]
-     Bs = Bs.loc[~Bs.index.duplicated(keep='first')]
+     B = B.loc[twas_data['3_y']]
+     B = B.loc[~B.index.duplicated(keep='first')]
+     snp_lodds = snp_lodds.align(B, axis=0, join='inner')[0]
      z = twas_data['5_x']
      z = z.loc[~z.index.duplicated(keep='first')]
      X = x.loc[:,twas_data['3_y']]
@@ -363,36 +379,59 @@
 
    #+RESULTS:
    :RESULTS:
+   # Out[9]:
+   :END:
+
+   Compute the PIP for the tissue-specific effects.
+
+   \[ \Pr(b_{jt} \neq 0 \mid \cdot) = \sum_k \Pr(l_{jk} \neq 0 \mid \cdot) \Pr(f_{tk} \neq 0 \mid \cdot) \]
+
+   #+BEGIN_SRC ipython
+     pip = sp.expit(snp_lodds.loc[:,keep]) @ sp.expit(tis_lodds.loc[:,keep]).T
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
    # Out[10]:
    :END:
 
-   Compare the permutation null distribution of the TWAS statistic to the
-   theoretical null.
+   Plot the permutation null distribution of the TWAS statistic.
+
+   \begin{align*}
+     \vy &\sim \N(\veta a, \sigma^2 \mi), \qquad \veta = \mx\vb\\
+     \hat{a} &= (\veta' \veta)^{-1} \veta' \vy\\
+     &= (\vb' \mx' \mx \vb)^{-1} \vb' \mx' \vy, \qquad \mx = \mU\md\mv', \mU'\mU = \mi, \mv'\mv = \mi\\
+     &= (\vb' \mv' \md^2 \mv \vb)^{-1} \vb' \vz
+   \end{align*}
 
    #+BEGIN_SRC ipython :async t
      np.random.seed(1)
      n_perm = 100000
-     stat = z @ Bs
-     B = []
-     z_copy = z.values.copy()
-     for i in range(n_perm):
-       np.random.shuffle(z_copy)
-       B.append(z_copy @ Bs)
-     B = np.array(B).squeeze()
+     pip_thresh = 0.5
+     # Hard threshold posterior mean B
+     B_thresh = np.where(pip > pip_thresh, B, 0)
+     stat = pd.Series(z @ B_thresh / (X.shape[0] * np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), index=pip.columns)
+     perm_stat = []
+     # Permute b_t by selecting new indices
+     n_qtls = (pip > pip_thresh).sum(axis=0)
+     for t in B:
+       if n_qtls[t] == 0:
+         perm_stat.append(np.repeat(0, n_perm))
+         continue
+       data = np.repeat(B[t][pip[t] > pip_thresh], n_perm)
+       row = np.random.choice(B.shape[0], replace=True, size=(n_qtls[t], n_perm)).ravel()
+       col = np.repeat(np.arange(n_perm), n_qtls[t])
+       bt = ss.coo_matrix((data, (row, col)), shape=(B.shape[0], n_perm)).tocsr()
+       num = (z.values.reshape(1, -1) @ bt)
+       den = X.shape[0] * (R.values @ bt.power(2)).sum(axis=0, keepdims=True)
+       perm_stat.append(num / den)
+     perm_stat = np.vstack(perm_stat)
+     perm_logp = -np.log10((np.square(stat.values).reshape(-1, 1) <= np.square(perm_stat)).mean(axis=1) + 1e-8)
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[126]:
-   :END:
-
-   #+BEGIN_SRC ipython
-     perm_logp = -np.log10((np.square(stat.values).reshape(1, -1) < np.square(B)).mean(axis=0))
-   #+END_SRC
-
-   #+RESULTS:
-   :RESULTS:
-   # Out[174]:
+   # Out[112]:
    :END:
 
    #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-twas-null.png
@@ -402,11 +441,10 @@
      fig, ax = plt.subplots(1, 4)
      fig.set_size_inches(8, 2.25)
 
-     for a, b, s_, v_, t in zip(ax, B[:,idx], stat.loc[idx], v[idx], stat.index[idx]):
-       a.hist(b, bins=10, density=True, color='0.7')
-       a.axvline(s_, lw=1, c='r')
+     for a, s, p, t in zip(ax, stat.loc[idx], perm_stat[idx].T, stat.index[idx]):
+       a.hist(p, density=True, color='0.7')
+       a.axvline(s, lw=1, c='r')
        a.set_title(' '.join(t.split('_')[:2]))
-       a.set_xlim(-6, 6)
        a.set_xlabel('TWAS statistic')
      ax[0].set_ylabel('Density')
      fig.tight_layout()
@@ -414,7 +452,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[127]:
+   # Out[115]:
    [[file:figure/twas.org/apoe-twas-null.png]]
    :END:
 
@@ -439,7 +477,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[179]:
+   # Out[116]:
    [[file:figure/twas.org/apoe.png]]
    :END:
 

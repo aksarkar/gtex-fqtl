@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-04 Sat 21:48 -->
+<!-- 2020-04-05 Sun 16:03 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TWAS pipeline</title>
@@ -281,7 +281,18 @@ for the JavaScript code in this tag.
 <div class="outline-text-2" id="text-orged0fb56">
 <p>
 Here, we use the fitted <code>fqtl</code> models to perform TWAS of 114 traits
-(<a href="https://doi.org/10.1038/s41467-018-03621-1">Barbeira et al 2018</a>).
+(<a href="https://doi.org/10.1038/s41467-018-03621-1">Barbeira et al 2018</a>).\(
+  \DeclareMathOperator\N{N}
+  \newcommand\mU{\mathbf{U}}
+  \newcommand\mc{\mathbf{V}}
+  \newcommand\md{\mathbf{D}}
+  \newcommand\mi{\mathbf{I}}
+  \newcommand\mx{\mathbf{X}}
+  \newcommand\vb{\mathbf{b}_t}
+  \newcommand\veta{\boldsymbol{\eta}_t}
+  \newcommand\vy{\mathbf{y}}
+  \newcommand\vz{\mathbf{z}}
+  \)
 </p>
 </div>
 </div>
@@ -296,6 +307,7 @@ Here, we use the fitted <code>fqtl</code> models to perform TWAS of 114 traits
 <span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
 <span class="org-keyword">import</span> pandas <span class="org-keyword">as</span> pd
 <span class="org-keyword">import</span> scipy.linalg <span class="org-keyword">as</span> sl
+<span class="org-keyword">import</span> scipy.sparse <span class="org-keyword">as</span> ss
 <span class="org-keyword">import</span> scipy.special <span class="org-keyword">as</span> sp
 <span class="org-keyword">import</span> scipy.stats <span class="org-keyword">as</span> st
 </pre>
@@ -461,8 +473,10 @@ Extract the <code>fqtl</code> model for <i>APOE</i>.
 <span class="org-variable-name">prefix</span> = f<span class="org-string">'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{gene_id}/50'</span>
 <span class="org-variable-name">snp_annot</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.snp.info.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
 <span class="org-variable-name">snp_lodds</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.snp.lodds.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">snp_lodds.index</span> = snp_annot[3]
 <span class="org-variable-name">tis_annot</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.tis.info.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
 <span class="org-variable-name">tis_lodds</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.tis.lodds.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">tis_lodds.index</span> = tis_annot[1].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.rsplit(<span class="org-string">'_'</span>, maxsplit=1)[0])
 <span class="org-variable-name">keep</span> = (sp.expit(snp_lodds) &gt; .95).<span class="org-builtin">any</span>(axis=0)
 <span class="org-variable-name">L</span> = pd.read_csv(f<span class="org-string">'{prefix}/fqtl.snp.theta.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
 <span class="org-variable-name">L.index</span> = snp_annot[3]
@@ -574,12 +588,13 @@ Plot the TWAS loadings and the GWAS \(z\)-scores.
 <pre class="src src-ipython"><span class="org-variable-name">cm</span> = plt.get_cmap(<span class="org-string">'Dark2'</span>)
 plt.clf()
 <span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(2, 1, sharex=<span class="org-constant">True</span>)
-fig.set_size_inches(7.5, 4)
+fig.set_size_inches(6, 3.5)
 
 <span class="org-variable-name">query</span> = L.loc[:,keep].align(twas_data, axis=0, join=<span class="org-string">'inner'</span>)[0]
+<span class="org-variable-name">query_lodds</span> = snp_lodds.loc[:,keep].align(twas_data, axis=0, join=<span class="org-string">'inner'</span>)[0]
 <span class="org-variable-name">pos</span> = query.index / 1e6
 <span class="org-keyword">for</span> i, k <span class="org-keyword">in</span> <span class="org-builtin">enumerate</span>(query):
-  <span class="org-variable-name">keep_snps</span> = <span class="org-builtin">abs</span>(query[k]) &gt; 1e-3
+  <span class="org-variable-name">keep_snps</span> = query_lodds[k] &gt; sp.logit(.95)
   ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f<span class="org-string">'Factor {i}'</span>, zorder=3)
   ax[1].scatter(pos, twas_data[<span class="org-string">'5_x'</span>], s=1, color=<span class="org-string">'k'</span>, zorder=3, label=<span class="org-constant">None</span>)
   <span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
@@ -589,10 +604,10 @@ fig.set_size_inches(7.5, 4)
   a.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
   a.axvline(gene_info.loc[gene_id,3] / 1e6, c=<span class="org-string">'b'</span>, lw=0.5)
 ax[0].set_ylabel(<span class="org-string">'Loading'</span>)
-ax[1].set_ylabel(<span class="org-string">'GWAS $z$-score'</span>)
+ax[1].set_ylabel(<span class="org-string">'AD GWAS $z$-score'</span>)
 ax[1].set_xlabel(<span class="org-string">'Genomic position (MB)'</span>)
 ax[0].set_title(<span class="org-string">'APOE'</span>)
-fig.legend(frameon=<span class="org-constant">False</span>, markerscale=2, handletextpad=0, loc=<span class="org-string">'center left'</span>, bbox_to_anchor=(1, .5))
+fig.legend(frameon=<span class="org-constant">False</span>, markerscale=2, handletextpad=0, loc=<span class="org-string">'center left'</span>, bbox_to_anchor=(.95, .5))
 fig.tight_layout()
 </pre>
 </div>
@@ -604,12 +619,13 @@ fig.tight_layout()
 </div>
 
 <p>
-Estimate the TWAS \(z\)-score.
+Align the <code>fqtl</code> model and the GWAS summary statistics.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span class="org-variable-name">Bs</span> = B.loc[twas_data[<span class="org-string">'3_y'</span>]]
-<span class="org-variable-name">Bs</span> = Bs.loc[~Bs.index.duplicated(keep=<span class="org-string">'first'</span>)]
+<pre class="src src-ipython"><span class="org-variable-name">B</span> = B.loc[twas_data[<span class="org-string">'3_y'</span>]]
+<span class="org-variable-name">B</span> = B.loc[~B.index.duplicated(keep=<span class="org-string">'first'</span>)]
+<span class="org-variable-name">snp_lodds</span> = snp_lodds.align(B, axis=0, join=<span class="org-string">'inner'</span>)[0]
 <span class="org-variable-name">z</span> = twas_data[<span class="org-string">'5_x'</span>]
 <span class="org-variable-name">z</span> = z.loc[~z.index.duplicated(keep=<span class="org-string">'first'</span>)]
 <span class="org-variable-name">X</span> = x.loc[:,twas_data[<span class="org-string">'3_y'</span>]]
@@ -621,25 +637,52 @@ Estimate the TWAS \(z\)-score.
 </div>
 
 <p>
-Compare the permutation null distribution of the TWAS statistic to the
-theoretical null.
+Compute the PIP for the tissue-specific effects.
 </p>
+
+<p>
+\[ \Pr(b_{jt} \neq 0 \mid \cdot) = \sum_k \Pr(l_{jk} \neq 0 \mid \cdot) \Pr(f_{tk} \neq 0 \mid \cdot) \]
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">pip</span> = sp.expit(snp_lodds.loc[:,keep]) @ sp.expit(tis_lodds.loc[:,keep]).T
+</pre>
+</div>
+
+<p>
+Plot the permutation null distribution of the TWAS statistic.
+</p>
+
+\begin{align*}
+  \vy &\sim \N(\veta a, \sigma^2 \mi), \qquad \veta = \mx\vb\\
+  \hat{a} &= (\veta' \veta)^{-1} \veta' \vy\\
+  &= (\vb' \mx' \mx \vb)^{-1} \vb' \mx' \vy, \qquad \mx = \mU\md\mv', \mU'\mU = \mi, \mv'\mv = \mi\\
+  &= (\vb' \mv' \md^2 \mv \vb)^{-1} \vb' \vz
+\end{align*}
 
 <div class="org-src-container">
 <pre class="src src-ipython">np.random.seed(1)
 <span class="org-variable-name">n_perm</span> = 100000
-<span class="org-variable-name">stat</span> = z @ Bs
-<span class="org-variable-name">B</span> = []
-<span class="org-variable-name">z_copy</span> = z.values.copy()
-<span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_perm):
-  np.random.shuffle(z_copy)
-  B.append(z_copy @ Bs)
-<span class="org-variable-name">B</span> = np.array(B).squeeze()
-</pre>
-</div>
-
-<div class="org-src-container">
-<pre class="src src-ipython"><span class="org-variable-name">perm_logp</span> = -np.log10((np.square(stat.values).reshape(1, -1) &lt; np.square(B)).mean(axis=0))
+<span class="org-variable-name">pip_thresh</span> = 0.5
+<span class="org-comment-delimiter"># </span><span class="org-comment">Hard threshold posterior mean B</span>
+<span class="org-variable-name">B_thresh</span> = np.where(pip &gt; pip_thresh, B, 0)
+<span class="org-variable-name">stat</span> = pd.Series(z @ B_thresh / (X.shape[0] * np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), index=pip.columns)
+<span class="org-variable-name">perm_stat</span> = []
+<span class="org-comment-delimiter"># </span><span class="org-comment">Permute b_t by selecting new indices</span>
+<span class="org-variable-name">n_qtls</span> = (pip &gt; pip_thresh).<span class="org-builtin">sum</span>(axis=0)
+<span class="org-keyword">for</span> t <span class="org-keyword">in</span> B:
+  <span class="org-keyword">if</span> n_qtls[t] == 0:
+    perm_stat.append(np.repeat(0, n_perm))
+    <span class="org-keyword">continue</span>
+  <span class="org-variable-name">data</span> = np.repeat(B[t][pip[t] &gt; pip_thresh], n_perm)
+  <span class="org-variable-name">row</span> = np.random.choice(B.shape[0], replace=<span class="org-constant">True</span>, size=(n_qtls[t], n_perm)).ravel()
+  <span class="org-variable-name">col</span> = np.repeat(np.arange(n_perm), n_qtls[t])
+  <span class="org-variable-name">bt</span> = ss.coo_matrix((data, (row, col)), shape=(B.shape[0], n_perm)).tocsr()
+  <span class="org-variable-name">num</span> = (z.values.reshape(1, -1) @ bt)
+  <span class="org-variable-name">den</span> = X.shape[0] * (R.values @ bt.power(2)).<span class="org-builtin">sum</span>(axis=0, keepdims=<span class="org-constant">True</span>)
+  perm_stat.append(num / den)
+<span class="org-variable-name">perm_stat</span> = np.vstack(perm_stat)
+<span class="org-variable-name">perm_logp</span> = -np.log10((np.square(stat.values).reshape(-1, 1) &lt;= np.square(perm_stat)).mean(axis=1) + 1e-8)
 </pre>
 </div>
 
@@ -650,11 +693,10 @@ plt.clf()
 <span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(1, 4)
 fig.set_size_inches(8, 2.25)
 
-<span class="org-keyword">for</span> a, b, s_, v_, t <span class="org-keyword">in</span> <span class="org-builtin">zip</span>(ax, B[:,idx], stat.loc[idx], v[idx], stat.index[idx]):
-  a.hist(b, bins=10, density=<span class="org-constant">True</span>, color=<span class="org-string">'0.7'</span>)
-  a.axvline(s_, lw=1, c=<span class="org-string">'r'</span>)
+<span class="org-keyword">for</span> a, s, p, t <span class="org-keyword">in</span> <span class="org-builtin">zip</span>(ax, stat.loc[idx], perm_stat[idx].T, stat.index[idx]):
+  a.hist(p, density=<span class="org-constant">True</span>, color=<span class="org-string">'0.7'</span>)
+  a.axvline(s, lw=1, c=<span class="org-string">'r'</span>)
   a.set_title(<span class="org-string">' '</span>.join(t.split(<span class="org-string">'_'</span>)[:2]))
-  a.set_xlim(-6, 6)
   a.set_xlabel(<span class="org-string">'TWAS statistic'</span>)
 ax[0].set_ylabel(<span class="org-string">'Density'</span>)
 fig.tight_layout()
@@ -748,7 +790,7 @@ Run the entire pipeline.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-04 Sat 21:48</p>
+<p class="date">Created: 2020-04-05 Sun 16:03</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
