@@ -7,9 +7,10 @@
   ([[https://doi.org/10.1038/s41467-018-03621-1][Barbeira et al 2018]]).\(
   \DeclareMathOperator\N{N}
   \newcommand\mU{\mathbf{U}}
-  \newcommand\mc{\mathbf{V}}
   \newcommand\md{\mathbf{D}}
   \newcommand\mi{\mathbf{I}}
+  \newcommand\mr{\mathbf{R}}
+  \newcommand\mv{\mathbf{V}}
   \newcommand\mx{\mathbf{X}}
   \newcommand\vb{\mathbf{b}_t}
   \newcommand\veta{\boldsymbol{\eta}_t}
@@ -38,20 +39,24 @@
 
   #+RESULTS:
   :RESULTS:
-  16551048
+  16819937
   :END:
 
   #+NAME: imports
   #+BEGIN_SRC ipython
     import glob
     import itertools as it
-    import os.path
     import numpy as np
+    import os.path
+    import os.path
     import pandas as pd
+    import pyplink
     import scipy.linalg as sl
     import scipy.sparse as ss
     import scipy.special as sp
     import scipy.stats as st
+    import sqlite3
+    import tabix
   #+END_SRC
 
   #+RESULTS: imports
@@ -88,7 +93,7 @@
    The GTEx consortium provided summary statistics in hg38. ~liftover~ back to
    hg19 to combine with v6p models.
 
-   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
+   #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/fqtl
      find /broad/compbio/data/gtex_gwas_hg38_tabix/ -name "*.bed.gz" >manifest
    #+END_SRC
 
@@ -257,7 +262,6 @@
    Load the /cis/-genotypes around /APOE/.
 
    #+BEGIN_SRC ipython
-     import pyplink
      with pyplink.PyPlink(f'/broad/hptmp/aksarkar/geno/{gene_id}') as f:
        fam = f.get_fam()
        bim = f.get_bim()
@@ -275,7 +279,6 @@
    Read the GWAS summary statistics.
 
    #+BEGIN_SRC ipython
-     import tabix
      genes = pd.read_csv('/broad/hptmp/aksarkar/geno/manifest', sep='\t', header=None, index_col=0)
      f = tabix.open('/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz')
      row = genes.loc[gene_id]
@@ -379,7 +382,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[9]:
+   # Out[125]:
    :END:
 
    Compute the PIP for the tissue-specific effects.
@@ -400,17 +403,17 @@
    \begin{align*}
      \vy &\sim \N(\veta a, \sigma^2 \mi), \qquad \veta = \mx\vb\\
      \hat{a} &= (\veta' \veta)^{-1} \veta' \vy\\
-     &= (\vb' \mx' \mx \vb)^{-1} \vb' \mx' \vy, \qquad \mx = \mU\md\mv', \mU'\mU = \mi, \mv'\mv = \mi\\
-     &= (\vb' \mv' \md^2 \mv \vb)^{-1} \vb' \vz
+     &= (\vb' \mx' \mx \vb)^{-1} \vb' \mx' \vy\\
+     &= \frac{\vb' \vz}{\vb' \mr \vb}, \qquad \vz = \mx' \vy / n, \mr = \mx' \mx / n
    \end{align*}
 
    #+BEGIN_SRC ipython :async t
      np.random.seed(1)
-     n_perm = 100000
-     pip_thresh = 0.5
+     n_perm = int(1e6)
+     pip_thresh = 0.95
      # Hard threshold posterior mean B
      B_thresh = np.where(pip > pip_thresh, B, 0)
-     stat = pd.Series(z @ B_thresh / (X.shape[0] * np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), index=pip.columns)
+     stat = pd.Series(z @ B_thresh / (np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), index=pip.columns)
      perm_stat = []
      # Permute b_t by selecting new indices
      n_qtls = (pip > pip_thresh).sum(axis=0)
@@ -422,16 +425,14 @@
        row = np.random.choice(B.shape[0], replace=True, size=(n_qtls[t], n_perm)).ravel()
        col = np.repeat(np.arange(n_perm), n_qtls[t])
        bt = ss.coo_matrix((data, (row, col)), shape=(B.shape[0], n_perm)).tocsr()
-       num = (z.values.reshape(1, -1) @ bt)
-       den = X.shape[0] * (R.values @ bt.power(2)).sum(axis=0, keepdims=True)
-       perm_stat.append(num / den)
+       perm_stat.append(z.values.reshape(1, -1) @ bt)
      perm_stat = np.vstack(perm_stat)
      perm_logp = -np.log10((np.square(stat.values).reshape(-1, 1) <= np.square(perm_stat)).mean(axis=1) + 1e-8)
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[112]:
+   # Out[129]:
    :END:
 
    #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-twas-null.png
@@ -452,24 +453,68 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[115]:
+   # Out[130]:
    [[file:figure/twas.org/apoe-twas-null.png]]
+   :END:
+
+   Implement adaptive permutation ([[http://www.biodatamining.org/content/7/1/9][Che et al. 2014]]).
+
+   #+BEGIN_SRC ipython :async t
+     max_success = 10
+     block_size = int(1e3)
+     max_perm = int(1e7)
+     n = X.shape[0]
+     pip_thresh = 0.95
+     B_thresh = pd.DataFrame(np.where(pip > pip_thresh, B, 0), index=B.index, columns=B.columns)
+     n_qtls = (pip > pip_thresh).sum(axis=0)
+     num_success = 0
+     num_perm = 0
+     pvals = []
+     for t in B:
+       if n_qtls[t] == 0:
+         pvals.append(1)
+         continue
+       stat = z @ B_thresh[t] / B_thresh[t].T @ R @ B_thresh[t]
+       for _ in range(max_perm // block_size):
+         perm_stat = []
+         data = np.repeat(B_thresh[t][pip[t] > pip_thresh], block_size)
+         row = np.random.choice(B_thresh.shape[0], replace=True, size=(n_qtls[t], block_size)).ravel()
+         col = np.repeat(np.arange(block_size), n_qtls[t])
+         bt = ss.coo_matrix((data, (row, col)), shape=(B_thresh.shape[0], block_size)).tocsr()
+         num = (z.values.reshape(1, -1) @ bt)
+         den = (R.values @ bt.power(2)).sum(axis=0, keepdims=True)
+         perm_stat.append(num / den)
+         perm_stat = np.vstack(perm_stat)
+
+         num_success += (np.square(perm_stat) >= np.square(stat)).sum()
+         num_perm += block_size
+         if num_success >= max_success:
+           pvals.append(num_success / num_perm)
+           break
+       else:
+         pvals.append((num_success + 1) / (max_perm + 1))
+     pvals = np.array(pvals)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[149]:
    :END:
 
    #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe.png
      plt.clf()
      fig, ax = plt.subplots(2, 1, sharex=True)
      fig.set_size_inches(8, 6)
-     grid = np.arange(stat.shape[0])
-     ax[0].bar(grid, stat, width=.9, color='k', zorder=3)
+     grid = np.arange(B.shape[1])
+     ax[0].bar(grid, z @ B_thresh / (np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), width=.9, color='k', zorder=3)
      ax[0].set_ylabel('TWAS statistic')
-     ax[1].bar(grid, perm_logp, width=.9, color='k', zorder=3)
+     ax[1].bar(grid, -np.log(pvals), width=.9, color='k', zorder=3)
      for a in ax:
        a.set_xticks(grid)
        a.axhline(y=0, lw=1, color='0.7')
        a.grid(axis='x', color='0.7')
      ax[0].set_title('APOE')
-     ax[1].set_xticklabels(stat.index, rotation=90)
+     ax[1].set_xticklabels(B.columns, rotation=90)
      ax[1].set_xlabel('Tissue')
      ax[1].set_ylabel(r'$-\log_{10}(p)$')
      fig.tight_layout()
@@ -477,7 +522,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[116]:
+   # Out[155]:
    [[file:figure/twas.org/apoe.png]]
    :END:
 

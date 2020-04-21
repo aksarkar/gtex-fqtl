@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-05 Sun 16:03 -->
+<!-- 2020-04-21 Tue 17:48 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TWAS pipeline</title>
@@ -284,9 +284,10 @@ Here, we use the fitted <code>fqtl</code> models to perform TWAS of 114 traits
 (<a href="https://doi.org/10.1038/s41467-018-03621-1">Barbeira et al 2018</a>).\(
   \DeclareMathOperator\N{N}
   \newcommand\mU{\mathbf{U}}
-  \newcommand\mc{\mathbf{V}}
   \newcommand\md{\mathbf{D}}
   \newcommand\mi{\mathbf{I}}
+  \newcommand\mr{\mathbf{R}}
+  \newcommand\mv{\mathbf{V}}
   \newcommand\mx{\mathbf{X}}
   \newcommand\vb{\mathbf{b}_t}
   \newcommand\veta{\boldsymbol{\eta}_t}
@@ -303,13 +304,17 @@ Here, we use the fitted <code>fqtl</code> models to perform TWAS of 114 traits
 <div class="org-src-container">
 <pre class="src src-ipython" id="org7be5838"><span class="org-keyword">import</span> glob
 <span class="org-keyword">import</span> itertools <span class="org-keyword">as</span> it
-<span class="org-keyword">import</span> os.path
 <span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
+<span class="org-keyword">import</span> os.path
+<span class="org-keyword">import</span> os.path
 <span class="org-keyword">import</span> pandas <span class="org-keyword">as</span> pd
+<span class="org-keyword">import</span> pyplink
 <span class="org-keyword">import</span> scipy.linalg <span class="org-keyword">as</span> sl
 <span class="org-keyword">import</span> scipy.sparse <span class="org-keyword">as</span> ss
 <span class="org-keyword">import</span> scipy.special <span class="org-keyword">as</span> sp
 <span class="org-keyword">import</span> scipy.stats <span class="org-keyword">as</span> st
+<span class="org-keyword">import</span> sqlite3
+<span class="org-keyword">import</span> tabix
 </pre>
 </div>
 
@@ -520,8 +525,7 @@ Load the <i>cis</i>-genotypes around <i>APOE</i>.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span class="org-keyword">import</span> pyplink
-<span class="org-keyword">with</span> pyplink.PyPlink(f<span class="org-string">'/broad/hptmp/aksarkar/geno/{gene_id}'</span>) <span class="org-keyword">as</span> f:
+<pre class="src src-ipython"><span class="org-keyword">with</span> pyplink.PyPlink(f<span class="org-string">'/broad/hptmp/aksarkar/geno/{gene_id}'</span>) <span class="org-keyword">as</span> f:
   <span class="org-variable-name">fam</span> = f.get_fam()
   <span class="org-variable-name">bim</span> = f.get_bim()
   <span class="org-variable-name">x</span> = np.ma.masked_equal(np.array([row <span class="org-keyword">for</span> _, row <span class="org-keyword">in</span> f.iter_geno()]).T, -1).astype(<span class="org-builtin">float</span>)
@@ -536,8 +540,7 @@ Read the GWAS summary statistics.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span class="org-keyword">import</span> tabix
-<span class="org-variable-name">genes</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/geno/manifest'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
+<pre class="src src-ipython"><span class="org-variable-name">genes</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/geno/manifest'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
 <span class="org-variable-name">f</span> = tabix.<span class="org-builtin">open</span>(<span class="org-string">'/broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz'</span>)
 <span class="org-variable-name">row</span> = genes.loc[gene_id]
 <span class="org-variable-name">gwas_z</span> = (pd.DataFrame(f.query(f<span class="org-string">'chr{row[2]}'</span>, <span class="org-builtin">int</span>(row[3] - 1e6), <span class="org-builtin">int</span>(row[3] + 1e6)))
@@ -656,17 +659,17 @@ Plot the permutation null distribution of the TWAS statistic.
 \begin{align*}
   \vy &\sim \N(\veta a, \sigma^2 \mi), \qquad \veta = \mx\vb\\
   \hat{a} &= (\veta' \veta)^{-1} \veta' \vy\\
-  &= (\vb' \mx' \mx \vb)^{-1} \vb' \mx' \vy, \qquad \mx = \mU\md\mv', \mU'\mU = \mi, \mv'\mv = \mi\\
-  &= (\vb' \mv' \md^2 \mv \vb)^{-1} \vb' \vz
+  &= (\vb' \mx' \mx \vb)^{-1} \vb' \mx' \vy\\
+  &= \frac{\vb' \vz}{\vb' \mr \vb}, \qquad \vz = \mx' \vy / n, \mr = \mx' \mx / n
 \end{align*}
 
 <div class="org-src-container">
 <pre class="src src-ipython">np.random.seed(1)
-<span class="org-variable-name">n_perm</span> = 100000
-<span class="org-variable-name">pip_thresh</span> = 0.5
+<span class="org-variable-name">n_perm</span> = <span class="org-builtin">int</span>(1e6)
+<span class="org-variable-name">pip_thresh</span> = 0.95
 <span class="org-comment-delimiter"># </span><span class="org-comment">Hard threshold posterior mean B</span>
 <span class="org-variable-name">B_thresh</span> = np.where(pip &gt; pip_thresh, B, 0)
-<span class="org-variable-name">stat</span> = pd.Series(z @ B_thresh / (X.shape[0] * np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), index=pip.columns)
+<span class="org-variable-name">stat</span> = pd.Series(z @ B_thresh / (np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), index=pip.columns)
 <span class="org-variable-name">perm_stat</span> = []
 <span class="org-comment-delimiter"># </span><span class="org-comment">Permute b_t by selecting new indices</span>
 <span class="org-variable-name">n_qtls</span> = (pip &gt; pip_thresh).<span class="org-builtin">sum</span>(axis=0)
@@ -678,9 +681,7 @@ Plot the permutation null distribution of the TWAS statistic.
   <span class="org-variable-name">row</span> = np.random.choice(B.shape[0], replace=<span class="org-constant">True</span>, size=(n_qtls[t], n_perm)).ravel()
   <span class="org-variable-name">col</span> = np.repeat(np.arange(n_perm), n_qtls[t])
   <span class="org-variable-name">bt</span> = ss.coo_matrix((data, (row, col)), shape=(B.shape[0], n_perm)).tocsr()
-  <span class="org-variable-name">num</span> = (z.values.reshape(1, -1) @ bt)
-  <span class="org-variable-name">den</span> = X.shape[0] * (R.values @ bt.power(2)).<span class="org-builtin">sum</span>(axis=0, keepdims=<span class="org-constant">True</span>)
-  perm_stat.append(num / den)
+  perm_stat.append(z.values.reshape(1, -1) @ bt)
 <span class="org-variable-name">perm_stat</span> = np.vstack(perm_stat)
 <span class="org-variable-name">perm_logp</span> = -np.log10((np.square(stat.values).reshape(-1, 1) &lt;= np.square(perm_stat)).mean(axis=1) + 1e-8)
 </pre>
@@ -709,20 +710,62 @@ fig.tight_layout()
 </p>
 </div>
 
+<p>
+Implement adaptive permutation (<a href="http://www.biodatamining.org/content/7/1/9">Che et al. 2014</a>).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">max_success</span> = 10
+<span class="org-variable-name">block_size</span> = <span class="org-builtin">int</span>(1e3)
+<span class="org-variable-name">max_perm</span> = <span class="org-builtin">int</span>(1e7)
+<span class="org-variable-name">n</span> = X.shape[0]
+<span class="org-variable-name">pip_thresh</span> = 0.95
+<span class="org-variable-name">B_thresh</span> = pd.DataFrame(np.where(pip &gt; pip_thresh, B, 0), index=B.index, columns=B.columns)
+<span class="org-variable-name">n_qtls</span> = (pip &gt; pip_thresh).<span class="org-builtin">sum</span>(axis=0)
+<span class="org-variable-name">num_success</span> = 0
+<span class="org-variable-name">num_perm</span> = 0
+<span class="org-variable-name">pvals</span> = []
+<span class="org-keyword">for</span> t <span class="org-keyword">in</span> B:
+  <span class="org-keyword">if</span> n_qtls[t] == 0:
+    pvals.append(1)
+    <span class="org-keyword">continue</span>
+  <span class="org-variable-name">stat</span> = z @ B_thresh[t] / B_thresh[t].T @ R @ B_thresh[t]
+  <span class="org-keyword">for</span> _ <span class="org-keyword">in</span> <span class="org-builtin">range</span>(max_perm // block_size):
+    <span class="org-variable-name">perm_stat</span> = []
+    <span class="org-variable-name">data</span> = np.repeat(B_thresh[t][pip[t] &gt; pip_thresh], block_size)
+    <span class="org-variable-name">row</span> = np.random.choice(B_thresh.shape[0], replace=<span class="org-constant">True</span>, size=(n_qtls[t], block_size)).ravel()
+    <span class="org-variable-name">col</span> = np.repeat(np.arange(block_size), n_qtls[t])
+    <span class="org-variable-name">bt</span> = ss.coo_matrix((data, (row, col)), shape=(B_thresh.shape[0], block_size)).tocsr()
+    <span class="org-variable-name">num</span> = (z.values.reshape(1, -1) @ bt)
+    <span class="org-variable-name">den</span> = (R.values @ bt.power(2)).<span class="org-builtin">sum</span>(axis=0, keepdims=<span class="org-constant">True</span>)
+    perm_stat.append(num / den)
+    <span class="org-variable-name">perm_stat</span> = np.vstack(perm_stat)
+
+    <span class="org-variable-name">num_success</span> += (np.square(perm_stat) &gt;= np.square(stat)).<span class="org-builtin">sum</span>()
+    <span class="org-variable-name">num_perm</span> += block_size
+    <span class="org-keyword">if</span> num_success &gt;= max_success:
+      pvals.append(num_success / num_perm)
+      <span class="org-keyword">break</span>
+  <span class="org-keyword">else</span>:
+    pvals.append((num_success + 1) / (max_perm + 1))
+<span class="org-variable-name">pvals</span> = np.array(pvals)
+</pre>
+</div>
+
 <div class="org-src-container">
 <pre class="src src-ipython">plt.clf()
 <span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(2, 1, sharex=<span class="org-constant">True</span>)
 fig.set_size_inches(8, 6)
-<span class="org-variable-name">grid</span> = np.arange(stat.shape[0])
-ax[0].bar(grid, stat, width=.9, color=<span class="org-string">'k'</span>, zorder=3)
+<span class="org-variable-name">grid</span> = np.arange(B.shape[1])
+ax[0].bar(grid, z @ B_thresh / (np.diag(B_thresh.T @ R @ B_thresh) + 1e-8), width=.9, color=<span class="org-string">'k'</span>, zorder=3)
 ax[0].set_ylabel(<span class="org-string">'TWAS statistic'</span>)
-ax[1].bar(grid, perm_logp, width=.9, color=<span class="org-string">'k'</span>, zorder=3)
+ax[1].bar(grid, -np.log(pvals), width=.9, color=<span class="org-string">'k'</span>, zorder=3)
 <span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
   a.set_xticks(grid)
   a.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
   a.grid(axis=<span class="org-string">'x'</span>, color=<span class="org-string">'0.7'</span>)
 ax[0].set_title(<span class="org-string">'APOE'</span>)
-ax[1].set_xticklabels(stat.index, rotation=90)
+ax[1].set_xticklabels(B.columns, rotation=90)
 ax[1].set_xlabel(<span class="org-string">'Tissue'</span>)
 ax[1].set_ylabel(r<span class="org-string">'$-\log_{10}(p)$'</span>)
 fig.tight_layout()
@@ -790,7 +833,7 @@ Run the entire pipeline.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-05 Sun 16:03</p>
+<p class="date">Created: 2020-04-21 Tue 17:48</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
