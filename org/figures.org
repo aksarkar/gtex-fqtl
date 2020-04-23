@@ -1,0 +1,174 @@
+#+TITLE: Manuscript figures
+#+SETUPFILE: setup.org
+
+* Setup
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    (org-babel-lob-ingest "/home/unix/aksarkar/.emacs.d/org-templates/library.org")
+    (add-to-list 'python-shell-completion-native-disabled-interpreters "jupyter")
+  #+END_SRC
+
+  #+RESULTS:
+  | jupyter | pypy | ipython |
+
+  #+BEGIN_SRC emacs-lisp :exports none
+    ;; This is needed to unjam when async tasks fail
+    (ob-ipython--dequeue 'ob-ipython--async-queue)
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
+
+  #+RESULTS:
+  :RESULTS:
+  16870547
+  :END:
+
+  #+BEGIN_SRC ipython
+    import numpy as np
+    import pandas as pd
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+  #+RESULTS: imports
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    %matplotlib inline
+    %config InlineBackend.figure_formats = set(['svg'])
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[56]:
+  :END:
+
+  #+BEGIN_SRC ipython
+    import colorcet
+    import matplotlib
+    import matplotlib.pyplot as plt
+    plt.rcParams['font.family'] = 'Nimbus Sans'
+    plt.rcParams['figure.facecolor'] = 'w'
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[3]:
+  :END:
+
+* Figure 1
+
+  Read the simulation results.
+
+  #+BEGIN_SRC ipython
+    dat = pd.read_csv('/broad/compbio/aksarkar/projects/gtex-fqtl/result/simulation/power.txt.gz', sep='\t', header=None)
+    dat.columns = ('method', 'auprc', 'power.1', 'power.10', 'task', 'gene', 'rank', 'h2', 'n.snp', 'n.tis', 'rseed')
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[7]:
+  :END:
+
+  Plot power and AUPRC to detect tissues of action.
+
+  #+BEGIN_SRC ipython
+    %matplotlib agg
+    methods = ['fqtl-5', 'sqtl', 'glmnet-1', 'glmnet-0.5', 'bslmm-pge', 'metasoft-p', 'mashr', 'phenix']
+    labels = ['fQTL', 'sQTL', 'Lasso', 'Elastic net', 'BSLMM', 'Metasoft', 'MASH', 'PHENIX']
+    for metric, title in zip(['power.1', 'auprc'], ['Power', 'AUPRC']):
+      for n_snp in (1, 3, 5):
+        query = (dat[np.logical_and.reduce([
+          dat['method'].isin(methods),
+          dat['task'] == 'tissue',
+          dat['n.snp'] == n_snp])]
+                 .groupby(['method', 'rank', 'h2', 'n.snp', 'n.tis'])[metric]
+                 .agg(np.mean)
+                 .reset_index())
+        cm = plt.get_cmap('Paired')
+        plt.clf()
+        fig, ax = plt.subplots(len(query['rank'].unique()), len(query['n.tis'].unique()), sharex=True, sharey=True)
+        fig.set_size_inches(8, 5)
+        for (k, g), a in zip(query.groupby(['rank', 'n.tis']), ax.ravel()):
+          for i, m in enumerate(methods):
+            temp = g[g['method'] == m]
+            a.plot(temp['h2'], temp[metric], lw=1, c=cm(7 - i), label=labels[i], zorder=8 - i)
+        for a, n in zip(ax.T, query['n.tis'].unique()):
+          a[0].set_title(f'{n} tissues')
+        for a, k in zip(ax, query['rank'].unique()):
+          a[0].set_ylabel(f'Rank {k}')
+        h, l = ax[0,0].get_legend_handles_labels()
+        a = fig.add_subplot(111, xticks=[], yticks=[], frameon=False)
+        a.set_xlabel('Heritability', labelpad=24)
+        a.set_ylabel(f'{title} to detect tissues of action (FDR 1%)', labelpad=48)
+        a.legend(h, l, frameon=False, loc='center left', bbox_to_anchor=(1, .5))
+        fig.tight_layout()
+        fig.savefig(f'/broad/compbio/aksarkar/projects/gtex-fqtl/org/figure/figures.org/tis-{metric}-{n_snp}.svg')
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[131]:
+  :END:
+
+* Figure 2
+
+  Read the simulation results.
+
+  #+BEGIN_SRC ipython
+    dat = pd.read_csv('/broad/compbio/aksarkar/projects/gtex-fqtl/result/simulation/power.txt.gz', sep='\t', header=None)
+    dat.columns = ('method', 'auprc', 'power.1', 'power.10', 'task', 'gene', 'rank', 'h2', 'n.snp', 'n.tis', 'rseed')
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[7]:
+  :END:
+
+  Plot power and AUPRC to detect causal variants.
+
+  #+BEGIN_SRC ipython
+    %matplotlib agg
+    methods = ['fqtl-5', 'sqtl', 'glmnet-1', 'glmnet-0.5', 'bslmm.sparse', 'metasoft', 'mashr-lfsr', 'phenix-1']
+    labels = ['fQTL', 'sQTL', 'Lasso', 'Elastic net', 'BSLMM', 'Metasoft', 'MASH', 'PHENIX']
+    for metric, title in zip(['power.1', 'auprc'], ['Power', 'AUPRC']):
+      for n_snp in (1, 3, 5):
+        query = (dat[np.logical_and.reduce([
+          dat['method'].isin(methods),
+          dat['task'] == 'snp',
+          dat['n.snp'] == n_snp])]
+                 .groupby(['method', 'rank', 'h2', 'n.snp', 'n.tis'])[metric]
+                 .agg(np.mean)
+                 .reset_index())
+        cm = plt.get_cmap('Paired')
+        plt.clf()
+        fig, ax = plt.subplots(len(query['rank'].unique()), len(query['n.tis'].unique()), sharex=True, sharey=True)
+        fig.set_size_inches(8, 5)
+        for (k, g), a in zip(query.groupby(['rank', 'n.tis']), ax.ravel()):
+          for i, m in enumerate(methods):
+            temp = g[g['method'] == m]
+            a.plot(temp['h2'], temp[metric], lw=1, c=cm(7 - i), label=labels[i], zorder=8 - i)
+        for a, n in zip(ax.T, query['n.tis'].unique()):
+          a[0].set_title(f'{n} tissues')
+        for a, k in zip(ax, query['rank'].unique()):
+          a[0].set_ylabel(f'Rank {k}')
+        h, l = ax[0,0].get_legend_handles_labels()
+        a = fig.add_subplot(111, xticks=[], yticks=[], frameon=False)
+        a.set_xlabel('Heritability', labelpad=24)
+        a.set_ylabel(f'{title} to detect causal variants (FDR 1%)', labelpad=48)
+        a.legend(h, l, frameon=False, loc='center left', bbox_to_anchor=(1, .5))
+        fig.tight_layout()
+        fig.savefig(f'/broad/compbio/aksarkar/projects/gtex-fqtl/org/figure/figures.org/snp-{metric}-{n_snp}.svg')
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[134]:
+  :END:
