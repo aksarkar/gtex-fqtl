@@ -541,10 +541,12 @@
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
      mkdir -p tasks
-     awk '{print >"/broad/hptmp/aksarkar/tasks/chunk-" int(NR / 1000) ".txt"}' geno/manifest
+     awk '{print >"/broad/hptmp/aksarkar/tasks/chunk-" int((NR - 1) / 1000) ".txt"}' geno/manifest
    #+END_SRC
 
    #+RESULTS:
+   :RESULTS:
+   :END:
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
      qsub -cwd -V -terse -j y -sync n -N test -l h_vmem=1G,h_rt=0:30:00
@@ -558,13 +560,16 @@
    Run the entire pipeline.
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-     find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" | parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {} /broad/hptmp/aksarkar/geno/manifest /broad/hptmp/aksarkar/twas/{=use File::Basename; $_ = basename($_); s/.bed.gz/.txt.gz/=}' >/broad/hptmp/aksarkar/twas/joblist
+     find /broad/hptmp/aksarkar/gtex-gwas-hg19 -name "*.bed.gz" >/broad/hptmp/aksarkar/gtex-gwas-hg19/manifest
+     parallel --dry-run 'python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py {1} /broad/hptmp/aksarkar/tasks/chunk-{2}.txt /broad/hptmp/aksarkar/twas/{=1 use File::Basename; $_ = basename($_); s/.bed.gz//=}-{2}' :::: /broad/hptmp/aksarkar/gtex-gwas-hg19/manifest ::: $(seq 0 28) >/broad/hptmp/aksarkar/twas/joblist
    #+END_SRC
 
    #+RESULTS:
+   :RESULTS:
+   :END:
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=4G,h_rt=12:00:00 -t 1-2
+     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=4G,h_rt=2:00:00 -t 1-58
      readarray -O1 tasks < /broad/hptmp/aksarkar/twas/joblist
      source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
      exec ${tasks[$SGE_TASK_ID]}
@@ -572,6 +577,6 @@
 
    #+RESULTS:
    :RESULTS:
-   16537379.1-2:1
+   16874508.1-58:1
    :END:
 
