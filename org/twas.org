@@ -61,7 +61,7 @@
 
   #+RESULTS: imports
   :RESULTS:
-  # Out[1]:
+  # Out[8]:
   :END:
 
   #+BEGIN_SRC ipython
@@ -71,7 +71,7 @@
 
   #+RESULTS:
   :RESULTS:
-  # Out[2]:
+  # Out[9]:
   :END:
 
   #+BEGIN_SRC ipython
@@ -84,7 +84,7 @@
 
   #+RESULTS:
   :RESULTS:
-  # Out[3]:
+  # Out[10]:
   :END:
 
 * Data
@@ -230,7 +230,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[4]:
+   # Out[11]:
    :END:
 
    Look at the fitted ~fqtl~ loadings and factors.
@@ -259,6 +259,26 @@
    [[file:figure/twas.org/apoe-fqtl.png]]
    :END:
 
+   Extract the ~sqtl~ models for /APOE/.
+
+   #+BEGIN_SRC ipython
+     chromosome = 19
+     prefix = f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/sqtl/{chromosome}/{gene_id}'
+     sqtl_tis_annot = pd.read_csv(f'{prefix}/sqtl.tis.info.gz', sep='\t', header=None, index_col=0)
+     sqtl_snp_annot = pd.read_csv(f'{prefix}/sqtl.snp.info.gz', sep='\t', header=None)
+     sqtl_snp_lodds = pd.read_csv(f'{prefix}/sqtl.effect.lodds.txt.gz', sep='\t', header=None)
+     sqtl_snp_lodds.index = snp_annot[3]
+     sqtl_snp_lodds.columns = sqtl_tis_annot[1].apply(lambda x: x.rsplit('_', maxsplit=1)[0])
+     sqtl_B = pd.read_csv(f'{prefix}/sqtl.effect.theta.txt.gz', sep='\t', header=None)
+     sqtl_B.index = snp_annot[3]
+     sqtl_B.columns = sqtl_tis_annot[1].apply(lambda x: x.rsplit('_', maxsplit=1)[0])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[26]:
+   :END:
+
    Load the /cis/-genotypes around /APOE/.
 
    #+BEGIN_SRC ipython
@@ -273,7 +293,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[5]:
+   # Out[19]:
    :END:
 
    Read the GWAS summary statistics.
@@ -289,7 +309,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[6]:
+   # Out[18]:
    #+BEGIN_EXAMPLE
      0         1         2  3  4       5       6
      0  chr19  44409410  44409411  T  A  2.4210  0.0155
@@ -309,7 +329,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[7]:
+   # Out[20]:
    #+BEGIN_EXAMPLE
      2  3  4    0_x       1_x 3_x 4_x     5_x      6  0_y  \
      2_x
@@ -329,39 +349,49 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[8]:
+   # Out[21]:
    :END:
 
    #+BEGIN_SRC ipython :ipyfile figure/twas.org/apoe-fqtl-l.png
      cm = plt.get_cmap('Dark2')
      plt.clf()
-     fig, ax = plt.subplots(2, 1, sharex=True)
-     fig.set_size_inches(6, 3.5)
+     fig, ax = plt.subplots(3, 1, sharex=True)
+     fig.set_size_inches(7, 4.5)
+
+     query = sqtl_B.loc[:,(sp.expit(sqtl_snp_lodds) > .95).any(axis=0)]
+     pos = query.index / 1e6
+     for i, k in enumerate(query):
+       keep_snps = sp.expit(sqtl_snp_lodds[k]) > .95
+       ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(1 - i), label=k, zorder=3)
 
      query = L.loc[:,keep].align(twas_data, axis=0, join='inner')[0]
      query_lodds = snp_lodds.loc[:,keep].align(twas_data, axis=0, join='inner')[0]
      pos = query.index / 1e6
      for i, k in enumerate(query):
        keep_snps = query_lodds[k] > sp.logit(.95)
-       ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f'Factor {i}', zorder=3)
-       ax[1].scatter(pos, twas_data['5_x'], s=1, color='k', zorder=3, label=None)
-       for a in ax:
-         for t in pos[keep_snps]:
-           a.axvline(t, lw=0.5, c='0.85')
+       ax[1].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f'Factor {i}', zorder=3)
+
+     ax[2].scatter(pos, twas_data['5_x'], s=1, color='k', zorder=3, label=None)
+
      for a in ax:
+       for t in pos[keep_snps]:
+         a.axvline(t, lw=0.5, c='0.85')
        a.axhline(y=0, lw=1, color='0.7')
        a.axvline(gene_info.loc[gene_id,3] / 1e6, c='b', lw=0.5)
-     ax[0].set_ylabel('Loading')
-     ax[1].set_ylabel('AD GWAS $z$-score')
+
+     ax[0].set_ylabel('sQTL effect size')
+     ax[0].legend(frameon=False, markerscale=2, handletextpad=0, loc='center left', bbox_to_anchor=(1, .5))
+     ax[1].set_ylabel('fQTL loading')
+     ax[1].legend(frameon=False, markerscale=2, handletextpad=0, loc='center left', bbox_to_anchor=(1, .5))
+     ax[2].set_ylabel('AD GWAS $z$-score')
      ax[1].set_xlabel('Genomic position (MB)')
      ax[0].set_title('APOE')
-     fig.legend(frameon=False, markerscale=2, handletextpad=0, loc='center left', bbox_to_anchor=(.95, .5))
      fig.tight_layout()
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[22]:
+   # Out[54]:
    [[file:figure/twas.org/apoe-fqtl-l.png]]
    :END:
 
@@ -551,11 +581,13 @@
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
      qsub -cwd -V -terse -j y -sync n -N test -l h_vmem=1G,h_rt=0:30:00
      source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
-     python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
+     python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/test.txt /broad/hptmp/aksarkar/twas/test
    #+END_SRC
 
    #+RESULTS:
-   : 11926870
+   :RESULTS:
+   16907214
+   :END:
 
    Run the entire pipeline.
 

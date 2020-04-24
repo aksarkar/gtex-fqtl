@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-23 Thu 13:57 -->
+<!-- 2020-04-24 Fri 16:38 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TWAS pipeline</title>
@@ -521,6 +521,24 @@ plt.tight_layout()
 </div>
 
 <p>
+Extract the <code>sqtl</code> models for <i>APOE</i>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">chromosome</span> = 19
+<span class="org-variable-name">prefix</span> = f<span class="org-string">'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/sqtl/{chromosome}/{gene_id}'</span>
+<span class="org-variable-name">sqtl_tis_annot</span> = pd.read_csv(f<span class="org-string">'{prefix}/sqtl.tis.info.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>, index_col=0)
+<span class="org-variable-name">sqtl_snp_annot</span> = pd.read_csv(f<span class="org-string">'{prefix}/sqtl.snp.info.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">sqtl_snp_lodds</span> = pd.read_csv(f<span class="org-string">'{prefix}/sqtl.effect.lodds.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">sqtl_snp_lodds.index</span> = snp_annot[3]
+<span class="org-variable-name">sqtl_snp_lodds.columns</span> = sqtl_tis_annot[1].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.rsplit(<span class="org-string">'_'</span>, maxsplit=1)[0])
+<span class="org-variable-name">sqtl_B</span> = pd.read_csv(f<span class="org-string">'{prefix}/sqtl.effect.theta.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, header=<span class="org-constant">None</span>)
+<span class="org-variable-name">sqtl_B.index</span> = snp_annot[3]
+<span class="org-variable-name">sqtl_B.columns</span> = sqtl_tis_annot[1].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: x.rsplit(<span class="org-string">'_'</span>, maxsplit=1)[0])
+</pre>
+</div>
+
+<p>
 Load the <i>cis</i>-genotypes around <i>APOE</i>.
 </p>
 
@@ -590,27 +608,37 @@ Plot the TWAS loadings and the GWAS \(z\)-scores.
 <div class="org-src-container">
 <pre class="src src-ipython"><span class="org-variable-name">cm</span> = plt.get_cmap(<span class="org-string">'Dark2'</span>)
 plt.clf()
-<span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(2, 1, sharex=<span class="org-constant">True</span>)
-fig.set_size_inches(6, 3.5)
+<span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(3, 1, sharex=<span class="org-constant">True</span>)
+fig.set_size_inches(7, 4.5)
+
+<span class="org-variable-name">query</span> = sqtl_B.loc[:,(sp.expit(sqtl_snp_lodds) &gt; .95).<span class="org-builtin">any</span>(axis=0)]
+<span class="org-variable-name">pos</span> = query.index / 1e6
+<span class="org-keyword">for</span> i, k <span class="org-keyword">in</span> <span class="org-builtin">enumerate</span>(query):
+  <span class="org-variable-name">keep_snps</span> = sp.expit(sqtl_snp_lodds[k]) &gt; .95
+  ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(1 - i), label=k, zorder=3)
 
 <span class="org-variable-name">query</span> = L.loc[:,keep].align(twas_data, axis=0, join=<span class="org-string">'inner'</span>)[0]
 <span class="org-variable-name">query_lodds</span> = snp_lodds.loc[:,keep].align(twas_data, axis=0, join=<span class="org-string">'inner'</span>)[0]
 <span class="org-variable-name">pos</span> = query.index / 1e6
 <span class="org-keyword">for</span> i, k <span class="org-keyword">in</span> <span class="org-builtin">enumerate</span>(query):
   <span class="org-variable-name">keep_snps</span> = query_lodds[k] &gt; sp.logit(.95)
-  ax[0].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f<span class="org-string">'Factor {i}'</span>, zorder=3)
-  ax[1].scatter(pos, twas_data[<span class="org-string">'5_x'</span>], s=1, color=<span class="org-string">'k'</span>, zorder=3, label=<span class="org-constant">None</span>)
-  <span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
-    <span class="org-keyword">for</span> t <span class="org-keyword">in</span> pos[keep_snps]:
-      a.axvline(t, lw=0.5, c=<span class="org-string">'0.85'</span>)
+  ax[1].scatter(pos[keep_snps], query[k][keep_snps], s=4, color=cm(i), label=f<span class="org-string">'Factor {i}'</span>, zorder=3)
+
+ax[2].scatter(pos, twas_data[<span class="org-string">'5_x'</span>], s=1, color=<span class="org-string">'k'</span>, zorder=3, label=<span class="org-constant">None</span>)
+
 <span class="org-keyword">for</span> a <span class="org-keyword">in</span> ax:
+  <span class="org-keyword">for</span> t <span class="org-keyword">in</span> pos[keep_snps]:
+    a.axvline(t, lw=0.5, c=<span class="org-string">'0.85'</span>)
   a.axhline(y=0, lw=1, color=<span class="org-string">'0.7'</span>)
   a.axvline(gene_info.loc[gene_id,3] / 1e6, c=<span class="org-string">'b'</span>, lw=0.5)
-ax[0].set_ylabel(<span class="org-string">'Loading'</span>)
-ax[1].set_ylabel(<span class="org-string">'AD GWAS $z$-score'</span>)
+
+ax[0].set_ylabel(<span class="org-string">'sQTL effect size'</span>)
+ax[0].legend(frameon=<span class="org-constant">False</span>, markerscale=2, handletextpad=0, loc=<span class="org-string">'center left'</span>, bbox_to_anchor=(1, .5))
+ax[1].set_ylabel(<span class="org-string">'fQTL loading'</span>)
+ax[1].legend(frameon=<span class="org-constant">False</span>, markerscale=2, handletextpad=0, loc=<span class="org-string">'center left'</span>, bbox_to_anchor=(1, .5))
+ax[2].set_ylabel(<span class="org-string">'AD GWAS $z$-score'</span>)
 ax[1].set_xlabel(<span class="org-string">'Genomic position (MB)'</span>)
 ax[0].set_title(<span class="org-string">'APOE'</span>)
-fig.legend(frameon=<span class="org-constant">False</span>, markerscale=2, handletextpad=0, loc=<span class="org-string">'center left'</span>, bbox_to_anchor=(.95, .5))
 fig.tight_layout()
 </pre>
 </div>
@@ -807,7 +835,7 @@ awk <span class="org-string">'{print &gt;"/broad/hptmp/aksarkar/tasks/chunk-" in
 <div class="org-src-container">
 <pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N test -l <span class="org-variable-name">h_vmem</span>=1G,<span class="org-variable-name">h_rt</span>=0:30:00
 <span class="org-builtin">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
-python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/chunk-13.txt /broad/hptmp/aksarkar/twas/test.out.gz
+python /broad/compbio/aksarkar/projects/gtex-fqtl/twas.py /broad/hptmp/aksarkar/gtex-gwas-hg19/imputed_IGAP_Alzheimer.bed.gz /broad/hptmp/aksarkar/tasks/test.txt /broad/hptmp/aksarkar/twas/test
 </pre>
 </div>
 
@@ -822,7 +850,7 @@ parallel --dry-run <span class="org-string">'python /broad/compbio/aksarkar/proj
 </div>
 
 <div class="org-src-container">
-<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span class="org-variable-name">h_vmem</span>=4G,<span class="org-variable-name">h_rt</span>=2:00:00 -t 1
+<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span class="org-variable-name">h_vmem</span>=4G,<span class="org-variable-name">h_rt</span>=2:00:00 -t 1-58
 <span class="org-builtin">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/twas/joblist
 <span class="org-builtin">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
 <span class="org-keyword">exec</span> ${<span class="org-variable-name">tasks</span>[$<span class="org-variable-name">SGE_TASK_ID</span>]}
@@ -834,7 +862,7 @@ parallel --dry-run <span class="org-string">'python /broad/compbio/aksarkar/proj
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-23 Thu 13:57</p>
+<p class="date">Created: 2020-04-24 Fri 16:38</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

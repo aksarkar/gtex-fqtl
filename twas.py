@@ -127,6 +127,27 @@ def load_fqtl_model(prefix, pip_thresh=0.95):
   assert np.isfinite(pip.values).all()
   return snp_annot, B, pip
 
+def load_sqtl_model(prefix, pip_thresh=0.95):
+  """Return sqtl metadata, effect sizes, and PIPs
+
+  Return:
+
+  snp_annot - DataFrame (chromosome, ID, dummy, position, ref, alt)
+  B - fqtl effect sizes (p, m)
+  pip - fqtl posterior inclusion probabilities (p, m)
+
+  """
+  tis_annot = pd.read_csv(f'{prefix}/sqtl.tis.info.gz', sep='\t', header=None, index_col=0)
+  snp_annot = pd.read_csv(f'{prefix}/sqtl.snp.info.gz', sep='\t', header=None)
+  snp_lodds = pd.read_csv(f'{prefix}/sqtl.effect.lodds.txt.gz', sep='\t', header=None)
+  pip = sp.expit(snp_lodds)
+  pip.index = snp_annot[3]
+  pip.columns = tis_annot[1].apply(lambda x: x.rsplit('_', maxsplit=1)[0])
+  B = pd.read_csv(f'{prefix}/sqtl.effect.theta.txt.gz', sep='\t', header=None)
+  B.index = snp_annot[3]
+  B.columns = tis_annot[1].apply(lambda x: x.rsplit('_', maxsplit=1)[0])
+  return snp_annot, B, pip
+
 def load_geno(prefix):
   """Return DataFrame containing genotypes"""
   with pyplink.PyPlink(prefix) as f:
@@ -146,26 +167,31 @@ def est_gwas_cov(x, sv_thresh=1e-4):
 if __name__ == '__main__':
   f = tabix.open(sys.argv[1])
   genes = pd.read_csv(sys.argv[2], sep='\t', header=None, index_col=0)
-  stats = dict()
-  pvals = dict()
+  fqtl_stats = dict()
+  fqtl_pvals = dict()
+  sqtl_stats = dict()
+  sqtl_pvals = dict()
   for k, row in genes.iterrows():
     try:
       snp_annot, B, pip = load_fqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/fqtl-std/{k}/50/')
     except FileNotFoundError:
       print(f'warning: skipping empty model ({k}: {row[1]})')
       continue
+
     try:
       gwas_z = (pd.DataFrame(f.query(f'chr{row[2]}', int(row[3] - 1e6), int(row[3] + 1e6)))
                 .astype(dict(enumerate([str, int, int, str, str, float, float]))))
     except tabix.TabixError:
       print(f'warning: skipping empty cis-region in GWAS file {sys.argv[1]} ({k}: {row[1]})')
       continue
+
     try:
       twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
     except:
       # Hack: genes like ENSG00000215784.4 have garbage in snp_annot
       print(f'warning: skipping corrupted model ({k}: {row[1]})')
       continue
+
     if twas_data.empty:
       print(f'warning: no SNPs left ({k}: {row[1]})')
       continue
@@ -173,10 +199,23 @@ if __name__ == '__main__':
       print(f'warning: many SNPs lost ({k}: {row[1]})')
     else:
       print(f'estimating sTWAS statistics ({k}: {row[1]})')
-    X = load_geno(f'/broad/hptmp/aksarkar/geno/{k}')
+      X = load_geno(f'/broad/hptmp/aksarkar/geno/{k}')
+      z, R, B, pip = align(twas_data, X, B, pip)
+      stat, pval = adaptive_permutation(z, R, B, pip)
+      fqtl_stats[row[1]] = stat
+      fqtl_pvals[row[1]] = pval
+
+    try:
+      snp_annot, B, pip = load_sqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/sqtl/{row[2]}/{row.name}/')
+    except FileNotFoundError:
+      print(f'warning: skipping empty sqtl model ({k}: {row[1]})')
+      continue
     z, R, B, pip = align(twas_data, X, B, pip)
     stat, pval = adaptive_permutation(z, R, B, pip)
-    stats[row[1]] = stat
-    pvals[row[1]] = pval
-  pd.DataFrame.from_dict(stats, orient='index').to_csv(f'{sys.argv[3]}.stat.txt.gz', sep='\t', compression='gzip')
-  pd.DataFrame.from_dict(pvals, orient='index').to_csv(f'{sys.argv[3]}.pval.txt.gz', sep='\t', compression='gzip')
+    sqtl_stats[row[1]] = stat
+    sqtl_pvals[row[1]] = pval
+
+  pd.DataFrame.from_dict(sqtl_stats, orient='index').to_csv(f'{sys.argv[3]}.sqtl.stat.txt.gz', sep='\t', compression='gzip')
+  pd.DataFrame.from_dict(sqtl_pvals, orient='index').to_csv(f'{sys.argv[3]}.sqtl.pval.txt.gz', sep='\t', compression='gzip')
+  pd.DataFrame.from_dict(fqtl_stats, orient='index').to_csv(f'{sys.argv[3]}.fqtl.stat.txt.gz', sep='\t', compression='gzip')
+  pd.DataFrame.from_dict(fqtl_pvals, orient='index').to_csv(f'{sys.argv[3]}.fqtl.pval.txt.gz', sep='\t', compression='gzip')
