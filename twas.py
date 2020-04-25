@@ -186,7 +186,19 @@ if __name__ == '__main__':
       continue
 
     try:
-      twas_data = gwas_z.merge(snp_annot, left_on=[2, 3, 4], right_on=[3, 4, 5]).set_index('2_x')
+      twas_data = gwas_z.merge(snp_annot, left_on=2, right_on=3).set_index(2)
+      strand_flip = dict(zip('ACGT', 'TGCA'))
+      temp = twas_data[['3_x', '4_x']].applymap(lambda x: strand_flip[x])
+      strand_flipped = np.logical_or(
+        np.logical_and(temp['3_x'] == twas_data['4_y'], temp['4_x'] == twas_data['5_y']),
+        np.logical_and(temp['3_x'] == twas_data['5_y'], temp['4_x'] == twas_data['4_y']))
+      twas_data.loc[strand_flipped, ['3_x', '4_x']] = temp
+      allele_flipped = np.logical_and(twas_data['3_x'] == twas_data['5_y'], twas_data['4_x'] == twas_data['4_y'])
+      twas_data.loc[allele_flipped, '3_x'], twas_data.loc[allele_flipped, '4_x'] = \
+        twas_data.loc[allele_flipped, '4_x'], twas_data.loc[allele_flipped, '3_x']
+      twas_data.loc[allele_flipped, '5_x'] *= -1
+      aligned = np.logical_and(twas_data['3_x'] == twas_data['4_y'], twas_data['4_x'] == twas_data['5_y'])
+      twas_data = twas_data.loc[aligned]
     except:
       # Hack: genes like ENSG00000215784.4 have garbage in snp_annot
       print(f'warning: skipping corrupted model ({k}: {row[1]})')
