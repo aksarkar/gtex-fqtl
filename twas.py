@@ -208,14 +208,13 @@ if __name__ == '__main__':
       print(f'warning: no SNPs left ({k}: {row[1]})')
       continue
     elif twas_data.shape[0] < 0.5 * snp_annot.shape[0]:
-      print(f'warning: many SNPs lost ({k}: {row[1]})')
-    else:
-      print(f'estimating sTWAS statistics ({k}: {row[1]})')
-      X = load_geno(f'/broad/hptmp/aksarkar/geno/{k}')
-      z, R, B, pip = align(twas_data, X, B, pip)
-      stat, pval = adaptive_permutation(z, R, B, pip)
-      fqtl_stats[row[1]] = stat
-      fqtl_pvals[row[1]] = pval
+      print(f'warning: more than 50% SNPs lost ({k}: {row[1]})')
+    print(f'estimating sTWAS statistics ({k}: {row[1]})')
+    X = load_geno(f'/broad/hptmp/aksarkar/geno/{k}')
+    z, R, B, pip = align(twas_data, X, B, pip)
+    stat, pval = adaptive_permutation(z, R, B, pip)
+    fqtl_stats[row[1]] = stat
+    fqtl_pvals[row[1]] = pval
 
     try:
       snp_annot, B, pip = load_sqtl_model(f'/broad/compbio/ypp/gtex/analysis/fqtl-gtex/result/sqtl/{row[2]}/{row.name}/')
