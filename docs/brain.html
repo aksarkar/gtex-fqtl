@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-05 Sun 16:03 -->
+<!-- 2020-04-27 Mon 16:17 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AD brain-specific TWAS analysis</title>
@@ -245,7 +245,10 @@ for the JavaScript code in this tag.
 </li>
 <li><a href="#orga2da95b">Results</a>
 <ul>
+<li><a href="#org2bcbedd">sqtl associations</a></li>
 <li><a href="#orgc9b0e49">fqtl associations</a></li>
+<li><a href="#orge074c25">UTMOST associations</a></li>
+<li><a href="#org10118b4">Comparison</a></li>
 </ul>
 </li>
 </ul>
@@ -274,6 +277,7 @@ brain tissues using <code>fqtl</code> models.
 <span class="org-keyword">import</span> scipy.linalg <span class="org-keyword">as</span> sl
 <span class="org-keyword">import</span> scipy.special <span class="org-keyword">as</span> sp
 <span class="org-keyword">import</span> scipy.stats <span class="org-keyword">as</span> st
+<span class="org-keyword">import</span> statsmodels.api <span class="org-keyword">as</span> sm
 </pre>
 </div>
 
@@ -288,6 +292,7 @@ brain tissues using <code>fqtl</code> models.
 <span class="org-keyword">import</span> matplotlib
 <span class="org-keyword">import</span> matplotlib.pyplot <span class="org-keyword">as</span> plt
 <span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'font.family'</span>] = <span class="org-string">'Nimbus Sans'</span>
+<span class="org-variable-name">plt.rcParams</span>[<span class="org-string">'figure.facecolor'</span>] = <span class="org-string">'w'</span>
 </pre>
 </div>
 </div>
@@ -301,7 +306,8 @@ brain tissues using <code>fqtl</code> models.
 <h3 id="org5b2490c">Fitted elastic net models</h3>
 <div class="outline-text-3" id="text-org5b2490c">
 <p>
-<a href="https://www.nature.com/articles/s41467-018-03621-1">Barbeira et al. 2018</a> trained elastic net models on GTEx v6p.
+Gamazon et al. 2015 trained elastic net models on GTEx v6p. Download the
+fitted models from PredictDB.
 </p>
 
 <div class="org-src-container">
@@ -311,8 +317,14 @@ rm GTEx-V6p-1KG-2016-11-16.tar.gz
 </pre>
 </div>
 
+<p>
+The database uses rsid as the key for the SNPs. Download the dbSNP
+annotation to convert rsids to (chromosome, start, end).
+</p>
+
 <div class="org-src-container">
-<pre class="src src-ipython">
+<pre class="src src-shell">curl -O --ftp-pasv <span class="org-string">"https://ftp.ncbi.nih.gov/snp/pre_build152/organisms/human_9606_b151_GRCh37p13/VCF/00-common_all.vcf.gz"</span> 
+curl -O --ftp-pasv <span class="org-string">"https://ftp.ncbi.nih.gov/snp/pre_build152/organisms/human_9606_b151_GRCh37p13/VCF/00-common_all.vcf.gz.tbi"</span>
 </pre>
 </div>
 </div>
@@ -338,6 +350,43 @@ curl --ftp-pasv -OL <span class="org-string">"ftp://ftp.biostat.wisc.edu/pub/lu_
 <h2 id="orga2da95b">Results</h2>
 <div class="outline-text-2" id="text-orga2da95b">
 </div>
+<div id="outline-container-org2bcbedd" class="outline-3">
+<h3 id="org2bcbedd">sqtl associations</h3>
+<div class="outline-text-3" id="text-org2bcbedd">
+<p>
+Read the results.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">n_chunks</span> = 29
+<span class="org-variable-name">igap_sqtl_stat</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.sqtl.stat.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)])
+<span class="org-variable-name">igap_sqtl_pval</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.sqtl.pval.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)])
+<span class="org-variable-name">gwax_sqtl_stat</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.sqtl.stat.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)])
+<span class="org-variable-name">gwax_sqtl_pval</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.sqtl.pval.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)])
+</pre>
+</div>
+
+<p>
+Find the significant associations in the discovery cohort (IGAP; FDR 5%).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">igap_sqtl_sig</span> = igap_sqtl_pval.<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: sm.stats.multipletests(x, alpha=0.1, method=<span class="org-string">'fdr_bh'</span>)[0])
+</pre>
+</div>
+
+<p>
+For the significant associations, determine whether they replicated (GWAX;
+FDR 5%).
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">gwax_sqtl_rep</span> = gwax_sqtl_pval[igap_sqtl_sig].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: sm.stats.multipletests(x, alpha=0.1, method=<span class="org-string">'fdr_bh'</span>)[0])
+</pre>
+</div>
+</div>
+</div>
+
 <div id="outline-container-orgc9b0e49" class="outline-3">
 <h3 id="orgc9b0e49">fqtl associations</h3>
 <div class="outline-text-3" id="text-orgc9b0e49">
@@ -346,37 +395,126 @@ Read the results.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span class="org-variable-name">igap_res</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
-<span class="org-variable-name">gwax_res</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/twas/ad-gwax-hg37.txt.gz'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
+<pre class="src src-ipython"><span class="org-variable-name">n_chunks</span> = 29
+<span class="org-variable-name">igap_fqtl_stat</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.fqtl.stat.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)], sort=<span class="org-constant">True</span>)
+<span class="org-variable-name">igap_fqtl_pval</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.fqtl.pval.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)], sort=<span class="org-constant">True</span>)
+<span class="org-variable-name">gwax_fqtl_stat</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.fqtl.stat.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)], sort=<span class="org-constant">True</span>)
+<span class="org-variable-name">gwax_fqtl_pval</span> = pd.concat([pd.read_csv(f<span class="org-string">'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.fqtl.pval.txt.gz'</span>, index_col=0, sep=<span class="org-string">'\t'</span>) <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(n_chunks)], sort=<span class="org-constant">True</span>)
 </pre>
 </div>
 
 <p>
-In each brain tissue, find the significant gene-level associations in IGAP (FDR 10%).
+Find the significant associations in the discovery cohort (IGAP; FDR 5%),
+and determine whether they replicated (GWAX; FDR 5%).
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span class="org-variable-name">igap_p</span> = (igap_res
-          .dropna()
-          .<span class="org-builtin">filter</span>(like=<span class="org-string">'Brain'</span>, axis=1)
-          .<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: st.chi2(1).sf(np.square(x.values)), axis=0))
+<pre class="src src-ipython"><span class="org-variable-name">igap_fqtl_sig</span> = igap_fqtl_pval.<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: sm.stats.multipletests(x, alpha=0.1, method=<span class="org-string">'fdr_bh'</span>)[0])
+<span class="org-variable-name">gwax_fqtl_rep</span> = gwax_fqtl_pval[igap_fqtl_sig].<span class="org-builtin">apply</span>(<span class="org-keyword">lambda</span> x: sm.stats.multipletests(x, alpha=0.1, method=<span class="org-string">'fdr_bh'</span>)[0])
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge074c25" class="outline-3">
+<h3 id="orge074c25">UTMOST associations</h3>
+<div class="outline-text-3" id="text-orge074c25">
+<p>
+Read the data.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">igap_utmost_pval</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/utmost.cross.tissue.sumstats.igap.discovery.txt'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
+<span class="org-variable-name">gwax_utmost_pval</span> = pd.read_csv(<span class="org-string">'/broad/hptmp/aksarkar/utmost.cross.tissue.sumstats.gwax.replicate.txt'</span>, sep=<span class="org-string">'\t'</span>, index_col=0)
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span class="org-keyword">def</span> <span class="org-function-name">_bh</span>(x, fdr=.1):
-  <span class="org-variable-name">temp</span> = np.sort(x)
-  <span class="org-variable-name">thresh</span> = temp[temp &lt; fdr * np.arange(1, x.shape[0] + 1) / x.shape[0]].<span class="org-builtin">max</span>()
-  <span class="org-keyword">return</span> x &lt; thresh
+<pre class="src src-ipython"><span class="org-variable-name">igap_utmost_sig</span> = sm.stats.multipletests(igap_utmost_pval[<span class="org-string">'pvalue'</span>], alpha=0.1, method=<span class="org-string">'fdr_bh'</span>)[0]
+<span class="org-variable-name">gwax_utmost_rep</span> = sm.stats.multipletests(gwax_utmost_pval.loc[igap_utmost_sig, <span class="org-string">'pvalue'</span>], alpha=0.1, method=<span class="org-string">'fdr_bh'</span>)[0]
 </pre>
 </div>
+</div>
+</div>
+
+<div id="outline-container-org10118b4" class="outline-3">
+<h3 id="org10118b4">Comparison</h3>
+<div class="outline-text-3" id="text-org10118b4">
+<p>
+Compare the number of discovered/replicated associations in brain tissues
+between sqtl/fqtl.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython"><span class="org-variable-name">grid</span> = np.arange(gwax_fqtl_rep.shape[1])
+plt.clf()
+<span class="org-variable-name">fig</span>, <span class="org-variable-name">ax</span> = plt.subplots(2, 1, sharex=<span class="org-constant">True</span>)
+fig.set_size_inches(7.5, 5.5)
+
+ax[0].bar(grid, igap_sqtl_sig.<span class="org-builtin">sum</span>(), color=<span class="org-string">'k'</span>, label=<span class="org-string">'fqtl'</span>)
+ax[0].bar(grid, igap_fqtl_sig.<span class="org-builtin">sum</span>(), color=<span class="org-string">'r'</span>, alpha=0.5, label=<span class="org-string">'sqtl'</span>)
+ax[0].legend()
+ax[0].set_ylabel(<span class="org-string">'Num disc assoc'</span>)
+
+ax[1].bar(grid, gwax_sqtl_rep.<span class="org-builtin">sum</span>() / igap_sqtl_sig.<span class="org-builtin">sum</span>(), color=<span class="org-string">'k'</span>)
+ax[1].bar(grid, gwax_fqtl_rep.<span class="org-builtin">sum</span>() / igap_fqtl_sig.<span class="org-builtin">sum</span>(), color=<span class="org-string">'r'</span>, alpha=0.5)
+ax[1].set_xticks(grid)
+ax[1].set_xticklabels(gwax_fqtl_rep.columns, rotation=90)
+ax[1].set_xlabel(<span class="org-string">'Tissue'</span>)
+ax[1].set_ylabel(<span class="org-string">'Prop repl'</span>)
+fig.tight_layout()
+</pre>
+</div>
+
+
+<div class="figure">
+<p><img src="figure/brain.org/sqtl-fqtl-ad-repl.png" alt="sqtl-fqtl-ad-repl.png">
+</p>
+</div>
+
+<p>
+Compare the total number of associations (across tissues) between sqtl,
+fqtl, and UTMOST.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">pd.Series({<span class="org-string">'sqtl'</span>: igap_sqtl_sig.agg(<span class="org-builtin">any</span>, axis=1).<span class="org-builtin">sum</span>(),
+           <span class="org-string">'fqtl'</span>: igap_fqtl_sig.agg(<span class="org-builtin">any</span>, axis=1).<span class="org-builtin">sum</span>(),
+           <span class="org-string">'utmost'</span>: igap_utmost_sig.<span class="org-builtin">sum</span>()})
+</pre>
+</div>
+
+<pre class="example">
+sqtl       73
+fqtl       37
+utmost    192
+dtype: int64
+</pre>
+
+<p>
+Compare the total number of replications.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ipython">pd.Series({<span class="org-string">'sqtl'</span>: gwax_sqtl_rep.agg(<span class="org-builtin">any</span>, axis=1).<span class="org-builtin">sum</span>(),
+           <span class="org-string">'fqtl'</span>: gwax_fqtl_rep.agg(<span class="org-builtin">any</span>, axis=1).<span class="org-builtin">sum</span>(),
+           <span class="org-string">'utmost'</span>: gwax_utmost_rep.<span class="org-builtin">sum</span>()})
+</pre>
+</div>
+
+<pre class="example">
+sqtl      26
+fqtl      10
+utmost    29
+dtype: int64
+</pre>
 </div>
 </div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-05 Sun 16:03</p>
+<p class="date">Created: 2020-04-27 Mon 16:17</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

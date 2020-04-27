@@ -26,7 +26,9 @@
   #+CALL: ipython3(memory="16G",venv="fqtl") :dir /broad/hptmp/aksarkar/fqtl :exports none
 
   #+RESULTS:
-  : 16405971
+  :RESULTS:
+  16940941
+  :END:
 
   #+NAME: imports
   #+BEGIN_SRC ipython
@@ -38,11 +40,12 @@
     import scipy.linalg as sl
     import scipy.special as sp
     import scipy.stats as st
+    import statsmodels.api as sm
   #+END_SRC
 
   #+RESULTS: imports
   :RESULTS:
-  # Out[1]:
+  # Out[8]:
   :END:
 
   #+BEGIN_SRC ipython
@@ -60,17 +63,19 @@
     import matplotlib
     import matplotlib.pyplot as plt
     plt.rcParams['font.family'] = 'Nimbus Sans'
+    plt.rcParams['figure.facecolor'] = 'w'
   #+END_SRC
 
   #+RESULTS:
   :RESULTS:
-  # Out[3]:
+  # Out[51]:
   :END:
 
 * Data
 ** Fitted elastic net models
 
-   [[https://www.nature.com/articles/s41467-018-03621-1][Barbeira et al. 2018]] trained elastic net models on GTEx v6p.
+   Gamazon et al. 2015 trained elastic net models on GTEx v6p. Download the
+   fitted models from PredictDB.
 
    #+BEGIN_SRC shell :dir /broad/compbio/aksarkar/projects/gtex-fqtl/data/predictdb
      curl -OL "https://zenodo.org/record/3572842/files/GTEx-V6p-1KG-2016-11-16.tar.gz"
@@ -80,9 +85,17 @@
 
    #+RESULTS:
 
-   #+BEGIN_SRC ipython
-   
+   The database uses rsid as the key for the SNPs. Download the dbSNP
+   annotation to convert rsids to (chromosome, start, end).
+
+   #+BEGIN_SRC shell :dir /broad/compbio/aksarkar/projects/gtex-fqtl/data/predictdb
+     curl -O --ftp-pasv "https://ftp.ncbi.nih.gov/snp/pre_build152/organisms/human_9606_b151_GRCh37p13/VCF/00-common_all.vcf.gz" 
+     curl -O --ftp-pasv "https://ftp.ncbi.nih.gov/snp/pre_build152/organisms/human_9606_b151_GRCh37p13/VCF/00-common_all.vcf.gz.tbi"
    #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   :END:
 
 ** UTMOST summary statistics
 
@@ -96,13 +109,16 @@
    #+RESULTS:
 
 * Results
-** fqtl associations
+** sqtl associations
 
    Read the results.
 
-   #+BEGIN_SRC ipython
-     igap_res = pd.read_csv('/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer.txt.gz', sep='\t', index_col=0)
-     gwax_res = pd.read_csv('/broad/hptmp/aksarkar/twas/ad-gwax-hg37.txt.gz', sep='\t', index_col=0)
+   #+BEGIN_SRC ipython :async t
+     n_chunks = 29
+     igap_sqtl_stat = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.sqtl.stat.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)])
+     igap_sqtl_pval = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.sqtl.pval.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)])
+     gwax_sqtl_stat = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.sqtl.stat.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)])
+     gwax_sqtl_pval = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.sqtl.pval.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)])
    #+END_SRC
 
    #+RESULTS:
@@ -110,31 +126,149 @@
    # Out[4]:
    :END:
 
-   In each brain tissue, find the significant gene-level associations in IGAP (FDR 10%).
+   Find the significant associations in the discovery cohort (IGAP; FDR 5%).
 
    #+BEGIN_SRC ipython
-     igap_p = (igap_res
-               .dropna()
-               .filter(like='Brain', axis=1)
-               .apply(lambda x: st.chi2(1).sf(np.square(x.values)), axis=0))
+     igap_sqtl_sig = igap_sqtl_pval.apply(lambda x: sm.stats.multipletests(x, alpha=0.1, method='fdr_bh')[0])
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[5]:
+   # Out[53]:
    :END:
 
+   For the significant associations, determine whether they replicated (GWAX;
+   FDR 5%).
+
    #+BEGIN_SRC ipython
-     def _bh(x, fdr=.1):
-       temp = np.sort(x)
-       thresh = temp[temp < fdr * np.arange(1, x.shape[0] + 1) / x.shape[0]].max()
-       return x < thresh
+     gwax_sqtl_rep = gwax_sqtl_pval[igap_sqtl_sig].apply(lambda x: sm.stats.multipletests(x, alpha=0.1, method='fdr_bh')[0])
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   # Out[6]:
+   # Out[56]:
    :END:
 
-   
+** fqtl associations
 
+   Read the results.
+
+   #+BEGIN_SRC ipython :async t
+     n_chunks = 29
+     igap_fqtl_stat = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.fqtl.stat.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)], sort=True)
+     igap_fqtl_pval = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/imputed_IGAP_Alzheimer-{i}.fqtl.pval.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)], sort=True)
+     gwax_fqtl_stat = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.fqtl.stat.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)], sort=True)
+     gwax_fqtl_pval = pd.concat([pd.read_csv(f'/broad/hptmp/aksarkar/twas/ad-gwax-hg37-{i}.fqtl.pval.txt.gz', index_col=0, sep='\t') for i in range(n_chunks)], sort=True)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[25]:
+   :END:
+
+   Find the significant associations in the discovery cohort (IGAP; FDR 5%),
+   and determine whether they replicated (GWAX; FDR 5%).
+
+   #+BEGIN_SRC ipython
+     igap_fqtl_sig = igap_fqtl_pval.apply(lambda x: sm.stats.multipletests(x, alpha=0.1, method='fdr_bh')[0])
+     gwax_fqtl_rep = gwax_fqtl_pval[igap_fqtl_sig].apply(lambda x: sm.stats.multipletests(x, alpha=0.1, method='fdr_bh')[0])
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[58]:
+   :END:
+
+** UTMOST associations
+
+   Read the data.
+
+   #+BEGIN_SRC ipython
+     igap_utmost_pval = pd.read_csv('/broad/hptmp/aksarkar/utmost.cross.tissue.sumstats.igap.discovery.txt', sep='\t', index_col=0)
+     gwax_utmost_pval = pd.read_csv('/broad/hptmp/aksarkar/utmost.cross.tissue.sumstats.gwax.replicate.txt', sep='\t', index_col=0)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[75]:
+   :END:
+
+   #+BEGIN_SRC ipython
+     igap_utmost_sig = sm.stats.multipletests(igap_utmost_pval['pvalue'], alpha=0.1, method='fdr_bh')[0]
+     gwax_utmost_rep = sm.stats.multipletests(gwax_utmost_pval.loc[igap_utmost_sig, 'pvalue'], alpha=0.1, method='fdr_bh')[0]
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[84]:
+   :END:
+
+** Comparison
+
+   Compare the number of discovered/replicated associations in brain tissues
+   between sqtl/fqtl.
+
+   #+BEGIN_SRC ipython :ipyfile figure/brain.org/sqtl-fqtl-ad-repl.png
+     grid = np.arange(gwax_fqtl_rep.shape[1])
+     plt.clf()
+     fig, ax = plt.subplots(2, 1, sharex=True)
+     fig.set_size_inches(7.5, 5.5)
+
+     ax[0].bar(grid, igap_sqtl_sig.sum(), color='k', label='fqtl')
+     ax[0].bar(grid, igap_fqtl_sig.sum(), color='r', alpha=0.5, label='sqtl')
+     ax[0].legend()
+     ax[0].set_ylabel('Num disc assoc')
+
+     ax[1].bar(grid, gwax_sqtl_rep.sum() / igap_sqtl_sig.sum(), color='k')
+     ax[1].bar(grid, gwax_fqtl_rep.sum() / igap_fqtl_sig.sum(), color='r', alpha=0.5)
+     ax[1].set_xticks(grid)
+     ax[1].set_xticklabels(gwax_fqtl_rep.columns, rotation=90)
+     ax[1].set_xlabel('Tissue')
+     ax[1].set_ylabel('Prop repl')
+     fig.tight_layout()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[73]:
+   [[file:figure/brain.org/sqtl-fqtl-ad-repl.png]]
+   :END:
+
+   Compare the total number of associations (across tissues) between sqtl,
+   fqtl, and UTMOST.
+
+   #+BEGIN_SRC ipython
+     pd.Series({'sqtl': igap_sqtl_sig.agg(any, axis=1).sum(),
+                'fqtl': igap_fqtl_sig.agg(any, axis=1).sum(),
+                'utmost': igap_utmost_sig.sum()})
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[93]:
+   #+BEGIN_EXAMPLE
+     sqtl       73
+     fqtl       37
+     utmost    192
+     dtype: int64
+   #+END_EXAMPLE
+   :END:
+
+   Compare the total number of replications.
+
+   #+BEGIN_SRC ipython
+     pd.Series({'sqtl': gwax_sqtl_rep.agg(any, axis=1).sum(),
+                'fqtl': gwax_fqtl_rep.agg(any, axis=1).sum(),
+                'utmost': gwax_utmost_rep.sum()})
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[94]:
+   #+BEGIN_EXAMPLE
+     sqtl      26
+     fqtl      10
+     utmost    29
+     dtype: int64
+   #+END_EXAMPLE
+   :END:

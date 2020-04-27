@@ -39,7 +39,7 @@
 
   #+RESULTS:
   :RESULTS:
-  16819937
+  16914624
   :END:
 
   #+NAME: imports
@@ -601,14 +601,13 @@
    :END:
 
    #+BEGIN_SRC shell :dir /broad/hptmp/aksarkar/
-     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=4G,h_rt=2:00:00 -t 1-58
-     readarray -O1 tasks < /broad/hptmp/aksarkar/twas/joblist
+     qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l h_vmem=4G,h_rt=4:00:00 -t 1
+     readarray -O1 tasks < /broad/hptmp/aksarkar/twas/redo
      source activate /broad/compbio/aksarkar/.conda/envs/fqtl 
      exec ${tasks[$SGE_TASK_ID]}
    #+END_SRC
 
    #+RESULTS:
    :RESULTS:
-   16874508.1-58:1
+   16926717.1-1:1
    :END:
-

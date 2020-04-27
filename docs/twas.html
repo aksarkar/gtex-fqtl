@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-04-24 Fri 16:38 -->
+<!-- 2020-04-27 Mon 16:17 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TWAS pipeline</title>
@@ -850,8 +850,8 @@ parallel --dry-run <span class="org-string">'python /broad/compbio/aksarkar/proj
 </div>
 
 <div class="org-src-container">
-<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span class="org-variable-name">h_vmem</span>=4G,<span class="org-variable-name">h_rt</span>=2:00:00 -t 1-58
-<span class="org-builtin">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/twas/joblist
+<pre class="src src-shell">qsub -cwd -V -terse -j y -sync n -N twas -S /bin/bash -l <span class="org-variable-name">h_vmem</span>=4G,<span class="org-variable-name">h_rt</span>=4:00:00 -t 1
+<span class="org-builtin">readarray</span> -O1 tasks &lt; /broad/hptmp/aksarkar/twas/redo
 <span class="org-builtin">source</span> activate /broad/compbio/aksarkar/.conda/envs/fqtl 
 <span class="org-keyword">exec</span> ${<span class="org-variable-name">tasks</span>[$<span class="org-variable-name">SGE_TASK_ID</span>]}
 </pre>
@@ -862,7 +862,7 @@ parallel --dry-run <span class="org-string">'python /broad/compbio/aksarkar/proj
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Abhishek Sarkar</p>
-<p class="date">Created: 2020-04-24 Fri 16:38</p>
+<p class="date">Created: 2020-04-27 Mon 16:17</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
