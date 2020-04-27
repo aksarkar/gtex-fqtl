@@ -214,8 +214,8 @@
      fig, ax = plt.subplots(2, 1, sharex=True)
      fig.set_size_inches(7.5, 5.5)
 
-     ax[0].bar(grid, igap_sqtl_sig.sum(), color='k', label='fqtl')
-     ax[0].bar(grid, igap_fqtl_sig.sum(), color='r', alpha=0.5, label='sqtl')
+     ax[0].bar(grid, igap_sqtl_sig.sum(), color='k', label='sqtl')
+     ax[0].bar(grid, igap_fqtl_sig.sum(), color='r', alpha=0.5, label='fqtl')
      ax[0].legend()
      ax[0].set_ylabel('Num disc assoc')
 
@@ -230,7 +230,7 @@
 
    #+RESULTS:
    :RESULTS:
-   # Out[73]:
+   # Out[95]:
    [[file:figure/brain.org/sqtl-fqtl-ad-repl.png]]
    :END:
 
